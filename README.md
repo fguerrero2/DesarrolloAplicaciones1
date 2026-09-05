@@ -50,8 +50,8 @@ Link para TPO2_UnitreeG1
 | **1° Parcial** | Viernes **18/9** |
 | **Clase remota sincrónica** | **Sábado 26/9, 9 a 13 hs** ⚠️ fuera del horario habitual |
 | **2° Parcial** | Viernes **13/11** |
-| **Recuperatorio y final adelantado** | **27/11** |
-| **Cierre de notas y regularidades. Devolución de trabajos prácticos ** | **04/12** |
-| **Final regular** | **11/12** |
+| **Recuperatorio y final adelantado** | Viernes **27/11** |
+| **Cierre de notas y regularidades. Devolución de trabajos prácticos ** | Viernes **04/12** |
+| **Final regular** | Viernes **11/12** |
 
 
