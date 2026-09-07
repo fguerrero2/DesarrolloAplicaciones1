@@ -1,5 +1,5 @@
 # DesarrolloAplicaciones1
-Materia desarrollo de aplicaciones 1 app que resuelve problema y 1 app para uso de Unitree G1
+Materia desarrollo de aplicaciones 1 
 
 > Repositorio de trabajo, documentación y trazabilidad de los TPO de la materia
 > **Desarrollo de aplicaciones 1* — UADE — **2C 2026** — 
@@ -19,11 +19,13 @@ hacemos y decidimos.
 
 TPO obligatorio con el desarrollo de la solución a un problema y su implementación mediante una app para celular
 
+[Ir a la carpeta](./TPO1_app/README.md)
 
 ### TPO2_UnitreeG1
 
 TPO obligatorio en donde utilicemos el robot de UADE Unitree G1 y realice tareas definidas. Tendremos que desarrollar y probar mediante el gemelo digital que se disponibiliza para dicho robot. 
 
+[Ir a la carpeta](./TPO2_UnitreeG1/README.md)
 
 
 ## Link a figma para diseño de los TPO
