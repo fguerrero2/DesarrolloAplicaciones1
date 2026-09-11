@@ -15,16 +15,16 @@ TPO obligatorio con el desarrollo de la solución a un problema y su implementac
 
 ### Definiciones generales
 
-Los profesionales independientes de psicología, psicopedagogía y fonoaudiología suelen administrar su actividad combinando calendario, WhatsApp, notas, planillas y comprobantes y existe un problema con la gestión de turnos cuando se registra en una agenda en porque es complejo mantener actualizada la agenda, asistencia, reprogramaciones, cancelaciones y dinero pendiente de cobro sin perder tiempo administrativo.
+Los profesionales independientes de psicología, psicopedagogía y fonoaudiología suelen administrar su actividad combinando calendario, WhatsApp, notas, planillas en papel y existe un problema con la gestión de turnos cuando se registra en una agenda física porque es complejo mantenerla actualizada con asistencia, reprogramaciones, cancelaciones y adicionalmente cuando el cobro de la sesión no queda saldado completamente, resulta poco agil llevar el registro de una sesión a la otra sin perder tiempo administrativo.
 
 
 Problemas concretos
-•	Agenda fragmentada: dificultad para distinguir rápidamente horarios ocupados, disponibles y bloqueados.
-•	Reprogramaciones manuales: se consulta el calendario, se conversa por WhatsApp y luego se debe recordar actualizar el turno.
-•	Falta de trazabilidad financiera: sesiones cobradas, medio de cobro, sesiones pendientes y saldo por paciente quedan dispersos entre whatsapp y agenda física.
-•	Cancelaciones repetidas: no existe una vista simple del acumulado anual por paciente.
-•	Agenda profesional no clínica: vacaciones, cursos y eventos compiten por los mismos horarios que los turnos y no hay forma rápida de ver el calendario con restricciones.
-•	Privacidad: los datos del paciente requieren mayor protección que una libreta, chat o planilla sin controles.
+•	Agenda fragmentada: dificultad para distinguir rápidamente horarios ocupados, disponibles y bloqueados
+•	Reprogramaciones manuales: se consulta el calendario, se conversa por WhatsApp y luego se debe recordar actualizar el turno cuando cambia
+•	Falta de trazabilidad financiera: sesiones cobradas, medio de cobro, sesiones pendientes y saldo por paciente quedan dispersos entre whatsapp y agenda física
+•	Cancelaciones repetidas: no existe una vista simple del acumulado anual por paciente
+•	Agenda profesional no clínica: vacaciones, cursos y eventos compiten por los mismos horarios que los turnos y no hay forma rápida de ver el calendario con restricciones
+•	Privacidad: los datos del paciente requieren mayor protección que una libreta, chat o planilla en Excel sin controles
 
 #### Modelo inicial “local-first” para usuario profesional de la salud
 
