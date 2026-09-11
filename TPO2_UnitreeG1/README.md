@@ -32,11 +32,12 @@ Por ejemplo, se define un area y punto de partida:
 - Movimiento X = 2 mt , Y = 5 mt
 
 ```mermaid
-flowchart TD
-    A[Android app Kotlin + Compose] -- REST --> [Backend Unitree SDK2/Python] 
-    B[Backend Unitree SDK2/Python] -- DDS --> C[Gemelo digital MuJoCo G1 3D]
+graph TD
+    A[Android app Kotlin + Compose]--REST-->B[Backend Unitree SDK2/Python];
+    B[Backend Unitree SDK2/Python]--DDS-->C[Gemelo digital MuJoCo G1 3D];
 ```
-
+DDS = Data Distribution Service
+REST= Representacion REpresentational State Transfer (Transferencia de Estado Representacional). Es un estilo de arquitectura que define un conjunto de reglas para crear servicios web sencillos.
 
 ### Link a figma para diseño de los TPO
 
