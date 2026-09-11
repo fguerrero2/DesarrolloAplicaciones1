@@ -33,7 +33,7 @@ Por ejemplo, se define un area y punto de partida:
 
 ```mermaid
 flowchart TD
-    A[Android app (Kotlin + Compose)] -- REST --> B
+    A[Android app (Kotlin + Compose)] -- REST --> [Backend (Unitree SDK2/Python)] 
     B[Backend (Unitree SDK2/Python)] -- DDS --> C[Gemelo digital (MuJoCo G1 3D)]
 ```
 
