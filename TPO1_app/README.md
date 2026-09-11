@@ -19,12 +19,12 @@ Los profesionales independientes de psicología, psicopedagogía y fonoaudiolog�
 
 
 Problemas concretos
-•	Agenda fragmentada: dificultad para distinguir rápidamente horarios ocupados, disponibles y bloqueados
-•	Reprogramaciones manuales: se consulta el calendario, se conversa por WhatsApp y luego se debe recordar actualizar el turno cuando cambia
-•	Falta de trazabilidad financiera: sesiones cobradas, medio de cobro, sesiones pendientes y saldo por paciente quedan dispersos entre whatsapp y agenda física
-•	Cancelaciones repetidas: no existe una vista simple del acumulado anual por paciente
-•	Agenda profesional no clínica: vacaciones, cursos y eventos compiten por los mismos horarios que los turnos y no hay forma rápida de ver el calendario con restricciones
-•	Privacidad: los datos del paciente requieren mayor protección que una libreta, chat o planilla en Excel sin controles
+* Agenda fragmentada: dificultad para distinguir rápidamente horarios ocupados, disponibles y bloqueados
+* Reprogramaciones manuales: se consulta el calendario, se conversa por WhatsApp y luego se debe recordar actualizar el turno cuando cambia
+*	Falta de trazabilidad financiera: sesiones cobradas, medio de cobro, sesiones pendientes y saldo por paciente quedan dispersos entre whatsapp y agenda física
+*	Cancelaciones repetidas: no existe una vista simple del acumulado anual por paciente
+*	Agenda profesional no clínica: vacaciones, cursos y eventos compiten por los mismos horarios que los turnos y no hay forma rápida de ver el calendario con restricciones
+*	Privacidad: los datos del paciente requieren mayor protección que una libreta, chat o planilla en Excel sin controles
 
 #### Modelo inicial “local-first” para usuario profesional de la salud
 
