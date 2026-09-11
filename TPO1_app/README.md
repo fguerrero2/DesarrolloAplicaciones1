@@ -45,6 +45,7 @@ Este modelo implica que se necesita un backend para las interacciones entre paci
 
 Link para TPO1_app
 
+https://www.figma.com/design/rgXvOl5ZgXYwsMAkkrWbtS/Wireframe-Problema-TPO-agenda-medica?node-id=1-49&p=f&t=NSO5FcfrnPh9sFEB-0
 
 
 ### Link a Trello para el seguimiento de las tareas requeridas
