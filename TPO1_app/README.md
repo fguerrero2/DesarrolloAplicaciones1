@@ -28,8 +28,9 @@ Problemas concretos
 
 #### Modelo inicial “local-first” para usuario profesional de la salud
 
-Adoptamos inicialmente un enfoque  “local-first” para almacenamiento de los datos cifrados en forma local sin implementar un backend para persistir datos en la nube, ademas 
-el diseño de la app implica que solamente el profesional de la salud será el usuario el una primera etapa solo utilizando las opciones gratis para registro de agendas, cobros y cancelaciones
+Adoptamos inicialmente un enfoque “local-first” para almacenamiento de los datos cifrados en forma local sin implementar un backend para persistir datos en la nube, ademas 
+el diseño de la app implica que solamente el profesional de la salud será el usuario el una primera etapa solo utilizando las opciones gratis para registro de agendas, cobros y cancelaciones.
+Tendremos una opcion oara conectar con un backend si el profesional desea conectar con las api de alguna de las empresas de medicina prepaga para recibir solicitud de agenda para turnos de pacientes, con esta funcionalidad implica un pago mensual y ademas el backend tendrá resguardo de los datos cifrados tambien.
 
  “local-first” segun https://www.inkandswitch.com/essay/local-first/
 
