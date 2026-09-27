@@ -36,8 +36,8 @@ graph TD
     A[Android app Kotlin + Compose]--REST-->B[Backend Unitree SDK2/Python];
     B[Backend Unitree SDK2/Python]--DDS-->C[Gemelo digital MuJoCo G1 3D];
 ```
-DDS = Data Distribution Service
-REST= Representacion REpresentational State Transfer (Transferencia de Estado Representacional). Es un estilo de arquitectura que define un conjunto de reglas para crear servicios web sencillos.
+- DDS = Data Distribution Service
+- REST= Representacion REpresentational State Transfer (Transferencia de Estado Representacional). Es un estilo de arquitectura que define un conjunto de reglas para crear servicios web sencillos.
 
 
 ### Ideas para TPO 2
