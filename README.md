@@ -21,28 +21,17 @@ TPO obligatorio con el desarrollo de la solución a un problema y su implementac
 
 [Ir a la carpeta](./TPO1_app/README.md)
 
-### TPO2_UnitreeG1
-
-TPO obligatorio en donde utilicemos el robot de UADE Unitree G1 y realice tareas definidas. Tendremos que desarrollar y probar mediante el gemelo digital que se disponibiliza para dicho robot. 
-
-[Ir a la carpeta](./TPO2_UnitreeG1/README.md)
-
 
 ## Link a figma para diseño de los TPO
 
 Link para TPO1_app
 https://www.figma.com/design/rgXvOl5ZgXYwsMAkkrWbtS/Wireframe-Problema-TPO-agenda-medica?node-id=1-49&p=f&t=NSO5FcfrnPh9sFEB-0
 
-Link para TPO2_UnitreeG1
-
 
 ## Link a Trello para el seguimiento de las tareas requeridas
 
 
 🗂️ **Tablero TPO1_app:** 
-
-🗂️ **Tablero TPO2_UnitreeG1:** 
-
 
 
 ## 🔴 Lo que hay que saber ya
