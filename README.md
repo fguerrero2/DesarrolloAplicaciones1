@@ -31,6 +31,7 @@ TPO obligatorio en donde utilicemos el robot de UADE Unitree G1 y realice tareas
 ## Link a figma para diseño de los TPO
 
 Link para TPO1_app
+https://www.figma.com/design/rgXvOl5ZgXYwsMAkkrWbtS/Wireframe-Problema-TPO-agenda-medica?node-id=1-49&p=f&t=NSO5FcfrnPh9sFEB-0
 
 Link para TPO2_UnitreeG1
 
