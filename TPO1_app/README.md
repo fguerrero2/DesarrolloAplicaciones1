@@ -36,9 +36,13 @@ Tendremos una opcion oara conectar con un backend si el profesional desea conect
 
 
  #### Modelo para segunda fase con inclusion de pacientes como usuarios
-En una segunda etapa se dispondrá de un backend cuando se habilite a los pacientes para interactuar con la misma app para registrar sus datos de prepaga u obra social, ver agendas de citas, solicitar reprogramaciones, solicitar cancelaciones, registrar pago con QR, solicitar emision de factura.
-Este modelo implica que se necesita un backend para las interacciones entre pacientes y profesional, ademas e la persistencia en un backend debido a los problemas que puede presentar la conexión directa entre app en el profesional y app en el paciente.
 
+En una segunda etapa se definen las siguientes funcionalidades como previstas.
+
+- Integración con ARCA para emisión de factura y envío a pacientes
+- Integración con obras sociales y prepagas
+- Registro de historial de sesiones con pacientes
+- Registro de información sensible del paciente
 
 
 ### Link a figma para diseño de los TPO
@@ -49,9 +53,11 @@ Link para TPO1_app
 https://www.figma.com/design/rgXvOl5ZgXYwsMAkkrWbtS/Wireframe-Problema-TPO-agenda-medica?node-id=1-49&p=f&t=NSO5FcfrnPh9sFEB-0
 
 
-### Link a Trello para el seguimiento de las tareas requeridas
+### Link a documento de la primer entrega
 
-🗂️ **Tablero TPO1_app:** 
+🗂️ **Documento TPO1_app:** https://docs.google.com/document/d/1akBymBCqjCRjVnROfY4HGDQmA4Ltdb_J0_-ZsmkVGlY/edit?tab=t.0
+
+
 
 
 
