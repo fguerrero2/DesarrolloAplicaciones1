@@ -1,3 +1,168 @@
 <resources>
     <string name="app_name">AgendaSalud</string>
+
+    <!-- Comunes -->
+    <string name="aceptar">Aceptar</string>
+    <string name="cancelar">Cancelar</string>
+    <string name="volver">Volver</string>
+    <string name="guardar">Guardar</string>
+    <string name="guardar_cambio">Guardar cambio</string>
+    <string name="elegir">elegir</string>
+
+    <!-- Navegación -->
+    <string name="nav_hoy">Hoy</string>
+    <string name="nav_agenda">Agenda</string>
+    <string name="nav_pacientes">Pacientes</string>
+    <string name="nav_cobros">Cobros</string>
+
+    <!-- Login (wireframe 01) -->
+    <string name="login_lema">Tu agenda y tus cobros, en este celular.</string>
+    <string name="login_titulo">Ingresar</string>
+    <string name="login_crear_titulo">Crear usuario</string>
+    <string name="login_crear_descripcion">Es la primera vez que usás AgendaSalud en este celular. Creá tu usuario y contraseña para proteger los datos de tus pacientes.</string>
+    <string name="login_usuario">Usuario</string>
+    <string name="login_contrasenia">Contraseña</string>
+    <string name="login_confirmar">Repetir contraseña</string>
+    <string name="login_ingresar">Ingresar</string>
+    <string name="login_crear">Crear usuario</string>
+    <string name="login_con_huella">Ingresar con huella o PIN</string>
+    <string name="login_prompt_huella">Ingresar a AgendaSalud</string>
+    <string name="login_error_usuario_vacio">Ingresá un usuario.</string>
+    <string name="login_error_contrasenia_corta">La contraseña debe tener al menos 6 caracteres.</string>
+    <string name="login_error_no_coinciden">Las contraseñas no coinciden.</string>
+    <string name="login_error_credenciales">Usuario o contraseña incorrectos.</string>
+
+    <!-- Hoy y Agenda (wireframes 02 y 03) -->
+    <string name="hoy_titulo">Hoy</string>
+    <string name="hoy_pendiente_de">Pendiente de %1$s: %2$s</string>
+    <string name="agenda_titulo">Agenda del día</string>
+    <string name="agenda_dia_anterior">Día anterior</string>
+    <string name="agenda_dia_siguiente">Día siguiente</string>
+    <string name="agenda_disponible">%1$s · Disponible</string>
+    <string name="agenda_horario_bloqueado">Horario bloqueado</string>
+    <string name="agenda_sesion_de">Sesión de %1$d min · %2$s</string>
+    <string name="agenda_sin_atencion">No hay atención este día.</string>
+    <string name="agenda_nuevo_turno">+ Nuevo turno</string>
+    <string name="agenda_bloquear">Bloquear período</string>
+    <string name="estado_programado">Programada</string>
+    <string name="estado_completado">Completada</string>
+    <string name="estado_cancelado">Cancelada</string>
+
+    <!-- Turnos -->
+    <string name="turno_nuevo_titulo">Nuevo turno</string>
+    <string name="turno_sin_pacientes">Primero cargá un paciente desde la pestaña Pacientes.</string>
+    <string name="turno_guardar">Guardar turno</string>
+    <string name="turno_importe">Importe %1$s</string>
+    <string name="turno_original">Horario original: %1$s %2$s</string>
+    <string name="turno_motivo">Motivo: %1$s</string>
+    <string name="turno_cobro_al_completar">Registrar cobro se habilita al completar la sesión.</string>
+    <string name="turno_completar">Completar sesión</string>
+    <string name="turno_reprogramar">Reprogramar</string>
+    <string name="turno_reprogramar_actual">%1$s · hoy está el %2$s a las %3$s</string>
+    <string name="turno_cancelar">Cancelar turno</string>
+    <string name="turno_cancelar_pregunta">¿Cancelar el turno de %1$s de las %2$s?</string>
+    <string name="turno_cancelar_confirmar">Cancelar turno</string>
+    <string name="turno_registrar_cobro">Registrar cobro</string>
+
+    <!-- Campos -->
+    <string name="campo_paciente">Paciente: %1$s</string>
+    <string name="campo_fecha">Fecha</string>
+    <string name="campo_dia">Día</string>
+    <string name="campo_hora">Hora</string>
+    <string name="campo_nueva_fecha">Nueva fecha</string>
+    <string name="campo_nueva_hora">Nueva hora</string>
+    <string name="campo_desde">Desde</string>
+    <string name="campo_hasta">Hasta</string>
+    <string name="campo_duracion">Duración (minutos)</string>
+    <string name="campo_importe">Importe</string>
+    <string name="campo_monto">Monto</string>
+    <string name="campo_medio">Medio de cobro</string>
+    <string name="campo_motivo">Motivo</string>
+    <string name="campo_motivo_opcional">Motivo (opcional)</string>
+    <string name="campo_nombre">Nombre y apellido</string>
+    <string name="campo_telefono_opcional">Teléfono (opcional)</string>
+
+    <!-- Cobros (wireframes 12 a 16) -->
+    <string name="cobros_titulo">Cobros pendientes</string>
+    <string name="cobros_total">Total pendiente: %1$s</string>
+    <string name="cobros_filtro_pendientes">Pendientes</string>
+    <string name="cobros_filtro_todos">Todos</string>
+    <string name="cobros_vacio">No hay cobros pendientes.</string>
+    <string name="cobros_cargo_cobrado">Cargo %1$s · Cobrado %2$s</string>
+    <string name="cobros_pendiente">Pendiente %1$s</string>
+    <string name="cobros_saldado">Saldado</string>
+    <string name="cobros_nota">Saldo calculado a partir de cargos y cobros. No se edita manualmente.</string>
+    <string name="cobro_titulo">Registrar cobro de sesión</string>
+    <string name="cobro_sesion">%1$s · Sesión %2$s</string>
+    <string name="cobro_pendiente_antes">Pendiente antes de cobrar: %1$s</string>
+    <string name="cobro_confirmar">Confirmar cobro</string>
+    <string name="medio_efectivo">Efectivo</string>
+    <string name="medio_mercado_pago">Mercado Pago</string>
+
+    <!-- Bloqueos (wireframes 22 y 23) -->
+    <string name="bloqueo_titulo">Bloquear período</string>
+    <string name="bloqueo_guardar">Bloquear</string>
+    <string name="bloqueo_quitar_titulo">¿Quitar bloqueo?</string>
+    <string name="bloqueo_quitar">Quitar bloqueo</string>
+
+    <!-- WhatsApp (wireframe 19) -->
+    <string name="whatsapp_titulo">Avisar por WhatsApp</string>
+    <string name="whatsapp_abrir">Abrir WhatsApp</string>
+    <string name="whatsapp_copiar">Copiar texto</string>
+    <string name="whatsapp_copiado">Texto copiado. Pegalo en el chat del paciente.</string>
+    <string name="whatsapp_sin_telefono">El paciente no tiene teléfono cargado. Podés copiar el texto.</string>
+    <string name="whatsapp_no_disponible">No se pudo abrir WhatsApp. Copiamos el texto para que lo pegues.</string>
+
+    <!-- Pacientes (wireframes 04 a 07, 30 y 31) -->
+    <string name="pacientes_titulo">Pacientes</string>
+    <string name="pacientes_buscar">Buscar por nombre</string>
+    <string name="pacientes_ver_inactivos">Ver inactivos</string>
+    <string name="pacientes_vacio">Todavía no cargaste pacientes.</string>
+    <string name="pacientes_sin_resultados">No hay pacientes con ese nombre.</string>
+    <string name="pacientes_saldo">Saldo pendiente: %1$s</string>
+    <string name="pacientes_sin_saldo">Sin saldo pendiente</string>
+    <string name="pacientes_inactivo">Paciente inactivo</string>
+    <string name="pacientes_nuevo">+ Nuevo paciente</string>
+    <string name="pacientes_nuevo_titulo">Nuevo paciente</string>
+    <string name="ficha_telefono">Teléfono: %1$s</string>
+    <string name="ficha_sin_telefono">sin cargar</string>
+    <string name="ficha_cancelaciones">Cancelaciones del paciente en %1$d: %2$d</string>
+    <string name="ficha_sin_turnos">Sin turnos registrados.</string>
+    <string name="ficha_editar">Editar paciente</string>
+    <string name="ficha_desactivar">Desactivar paciente</string>
+    <string name="ficha_desactivar_explicacion">Conserva su historial y saldo, pero no se le podrán dar turnos nuevos. Podés reactivarlo cuando quieras.</string>
+    <string name="ficha_desactivar_confirmar">Desactivar</string>
+    <string name="ficha_reactivar">Reactivar paciente</string>
+
+    <!-- Avisos de éxito: solo después de una escritura confirmada -->
+    <string name="aviso_turno_guardado">Turno guardado.</string>
+    <string name="aviso_sesion_completada">Sesión completada.</string>
+    <string name="aviso_sesion_saldada">Esta sesión no tiene saldo pendiente.</string>
+    <string name="aviso_cobro_total">Cobro registrado. Sesión saldada.</string>
+    <string name="aviso_cobro_parcial">Cobro parcial registrado. Queda pendiente %1$s.</string>
+    <string name="aviso_turno_cancelado">Turno cancelado.</string>
+    <string name="aviso_turno_reprogramado">Turno reprogramado.</string>
+    <string name="aviso_periodo_bloqueado">Período bloqueado.</string>
+    <string name="aviso_bloqueo_eliminado">Bloqueo quitado.</string>
+    <string name="aviso_paciente_creado">Paciente guardado.</string>
+    <string name="aviso_paciente_actualizado">Cambios guardados.</string>
+    <string name="aviso_paciente_desactivado">Paciente desactivado.</string>
+    <string name="aviso_paciente_reactivado">Paciente reactivado.</string>
+
+    <!-- Errores -->
+    <string name="error_horario_ocupado">Ese horario ya está ocupado por otro turno.</string>
+    <string name="error_periodo_bloqueado">Ese horario está dentro de un período bloqueado.</string>
+    <string name="error_fuera_de_horario">Fuera del horario de atención (lun a vie 9 a 18, sáb 9 a 12).</string>
+    <string name="error_intervalo_invalido">El horario de fin tiene que ser posterior al de inicio.</string>
+    <string name="error_paciente_inactivo">El paciente está inactivo.</string>
+    <string name="error_nombre_invalido">Ingresá el nombre del paciente.</string>
+    <string name="error_monto_no_positivo">El monto tiene que ser mayor a cero.</string>
+    <string name="error_monto_supera_pendiente">El monto supera lo pendiente de la sesión.</string>
+    <string name="error_monto_invalido">Monto no válido.</string>
+    <string name="error_estado_no_permitido">El turno ya no admite esta acción.</string>
+    <string name="error_no_encontrado">No se encontró el registro.</string>
+    <string name="error_guardado">No se pudo guardar. Probá de nuevo.</string>
+    <string name="error_elegir_paciente">Elegí un paciente.</string>
+    <string name="error_duracion_invalida">Ingresá una duración en minutos.</string>
+    <string name="error_motivo_vacio">Ingresá el motivo del bloqueo.</string>
 </resources>
