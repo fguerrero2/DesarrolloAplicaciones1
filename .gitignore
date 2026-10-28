@@ -10,7 +10,7 @@ graphify-out/
 *.xlsx
 
 # Datos - los datasets NO se versionan
-data/
+/data/
 *.csv
 *.parquet
 
@@ -106,6 +106,7 @@ Thumbs.db
 
 # Package Files #
 *.jar
+!gradle-wrapper.jar
 *.war
 *.nar
 *.ear
