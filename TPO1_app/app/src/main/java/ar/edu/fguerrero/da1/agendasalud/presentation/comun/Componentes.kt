@@ -1,16 +1,23 @@
 package ar.edu.fguerrero.da1.agendasalud.presentation.comun
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -24,6 +31,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
@@ -38,13 +46,27 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneOffset
 
-/** Encabezado de pantalla como en el wireframe: "AgendaSalud" chico y el título grande. */
+/** Acción de cerrar sesión que el NavHost pone a disposición de todas las pantallas. */
+val LocalCerrarSesion = staticCompositionLocalOf<(() -> Unit)?> { null }
+
+/**
+ * Encabezado de pantalla como en el wireframe: "AgendaSalud" chico y el título grande.
+ * Si hay sesión abierta, muestra el botón de cerrar sesión arriba a la derecha.
+ */
 @Composable
 fun Encabezado(titulo: String, subtitulo: String? = null) {
-    Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
-        Text(stringResource(R.string.app_name), style = MaterialTheme.typography.labelMedium)
-        Text(titulo, style = MaterialTheme.typography.headlineMedium, modifier = Modifier.semantics { heading() })
-        subtitulo?.let { Text(it, style = MaterialTheme.typography.titleMedium) }
+    val cerrarSesion = LocalCerrarSesion.current
+    Row(Modifier.padding(start = 16.dp, end = 4.dp, top = 12.dp, bottom = 12.dp)) {
+        Column(Modifier.weight(1f)) {
+            Text(stringResource(R.string.app_name), style = MaterialTheme.typography.labelMedium)
+            Text(titulo, style = MaterialTheme.typography.headlineMedium, modifier = Modifier.semantics { heading() })
+            subtitulo?.let { Text(it, style = MaterialTheme.typography.titleMedium) }
+        }
+        if (cerrarSesion != null) {
+            IconButton(onClick = cerrarSesion) {
+                Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = stringResource(R.string.cerrar_sesion))
+            }
+        }
     }
 }
 
@@ -58,13 +80,25 @@ fun BotonAncho(texto: String, onClick: () -> Unit, modifier: Modifier = Modifier
     ) { Text(texto) }
 }
 
+enum class EstiloTarjeta { NORMAL, DESTACADA, LIBRE, BLOQUEADA }
+
 /** Tarjeta de lista con una o más líneas de texto. */
 @Composable
 fun TarjetaTexto(
     lineas: List<String>,
     modifier: Modifier = Modifier,
+    estilo: EstiloTarjeta = EstiloTarjeta.NORMAL,
     onClick: (() -> Unit)? = null,
 ) {
+    val colores = MaterialTheme.colorScheme
+    val colorFondo = when (estilo) {
+        EstiloTarjeta.NORMAL -> colores.surfaceVariant
+        EstiloTarjeta.DESTACADA -> colores.primaryContainer
+        EstiloTarjeta.LIBRE -> colores.surface
+        EstiloTarjeta.BLOQUEADA -> colores.tertiaryContainer
+    }
+    val cardColors = CardDefaults.cardColors(containerColor = colorFondo)
+    val borde = if (estilo == EstiloTarjeta.LIBRE) BorderStroke(1.dp, colores.outlineVariant) else null
     val contenido: @Composable () -> Unit = {
         Column(Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(16.dp)) {
             lineas.forEachIndexed { i, linea ->
@@ -72,8 +106,8 @@ fun TarjetaTexto(
             }
         }
     }
-    if (onClick != null) Card(onClick = onClick, modifier = modifier.fillMaxWidth()) { contenido() }
-    else Card(modifier = modifier.fillMaxWidth()) { contenido() }
+    if (onClick != null) Card(onClick = onClick, modifier = modifier.fillMaxWidth(), colors = cardColors, border = borde) { contenido() }
+    else Card(modifier = modifier.fillMaxWidth(), colors = cardColors, border = borde) { contenido() }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

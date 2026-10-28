@@ -3,6 +3,7 @@ package ar.edu.fguerrero.da1.agendasalud.domain.model
 /** Errores de negocio que la UI traduce a mensajes. */
 sealed interface ErrorDominio {
     data object HorarioOcupado : ErrorDominio
+    data object TurnosEnPeriodo : ErrorDominio
     data object PeriodoBloqueado : ErrorDominio
     data object FueraDeHorario : ErrorDominio
     data object IntervaloInvalido : ErrorDominio

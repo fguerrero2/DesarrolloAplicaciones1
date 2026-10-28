@@ -88,7 +88,7 @@ class AgendaDiaViewModel(
             AgendaDiaUiState(
                 fecha = dia,
                 cargando = false,
-                items = ArmadoAgenda.armar(dia, turnosDia, bloqueosDia),
+                items = ArmadoAgenda.armar(dia, turnosDia, bloqueosDia, ahora = LocalDateTime.now()),
                 pacientesActivos = activos,
                 saldosDelDia = turnosDia
                     .distinctBy { it.turno.pacienteId }
@@ -169,7 +169,7 @@ class AgendaDiaViewModel(
             _borradorWhatsApp.value = BorradorWhatsApp(
                 telefono = paciente?.telefono,
                 texto = "Hola ${turno.nombrePaciente}, te escribo para avisarte que tu turno se reprogramó para el " +
-                    "${formatearFechaLarga(nuevoInicio)} a las ${formatearHora(nuevoInicio)}. ¡Gracias!",
+                    "${formatearFechaLarga(nuevoInicio, mayuscula = false)} a las ${formatearHora(nuevoInicio)}. ¡Gracias!",
             )
         }
 

@@ -16,8 +16,9 @@ import kotlinx.coroutines.withContext
 
 data class LoginUiState(
     val cargando: Boolean = true,
-    /** true la primera vez: hay que crear el usuario. */
-    val registro: Boolean = false,
+    /** Hay un único usuario por dispositivo: si ya existe, no se ofrece registrarse. */
+    val existeUsuario: Boolean = false,
+    val registrando: Boolean = false,
     val procesando: Boolean = false,
     @param:StringRes val error: Int? = null,
 )
@@ -33,8 +34,12 @@ class LoginViewModel(
     init {
         viewModelScope.launch {
             val existe = withContext(Dispatchers.IO) { credenciales.existeUsuario() }
-            _uiState.value = LoginUiState(cargando = false, registro = !existe)
+            _uiState.value = LoginUiState(cargando = false, existeUsuario = existe)
         }
+    }
+
+    fun mostrarRegistro(mostrar: Boolean) {
+        _uiState.update { it.copy(registrando = mostrar && !it.existeUsuario, error = null) }
     }
 
     fun crearUsuario(usuario: String, contrasenia: String, confirmacion: String) {
@@ -54,8 +59,12 @@ class LoginViewModel(
         }
     }
 
-    fun ingresar(usuario: String, contrasenia: String) = procesar {
-        credenciales.verificar(usuario, contrasenia.toCharArray())
+    fun ingresar(usuario: String, contrasenia: String) {
+        if (!_uiState.value.existeUsuario) {
+            _uiState.update { it.copy(error = R.string.login_error_sin_usuario) }
+            return
+        }
+        procesar { credenciales.verificar(usuario, contrasenia.toCharArray()) }
     }
 
     /** Desbloqueo con huella o PIN del dispositivo, solo si ya existe el usuario. */
@@ -68,7 +77,7 @@ class LoginViewModel(
             val ok = runCatching { withContext(Dispatchers.Default) { operacion() } }.getOrDefault(false)
             if (ok) {
                 sesion.desbloquear()
-                _uiState.update { it.copy(procesando = false, registro = false) }
+                _uiState.update { it.copy(procesando = false, existeUsuario = true, registrando = false) }
             } else {
                 _uiState.update { it.copy(procesando = false, error = R.string.login_error_credenciales) }
             }

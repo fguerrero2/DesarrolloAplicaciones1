@@ -34,7 +34,7 @@ object ReglasAgenda {
     fun validarBloqueo(intervalo: Intervalo, turnos: List<Turno>): ErrorDominio? = when {
         !intervalo.esValido -> ErrorDominio.IntervaloInvalido
         turnos.any { it.estado == EstadoTurno.PROGRAMADO && it.intervalo.seSuperponeCon(intervalo) } ->
-            ErrorDominio.HorarioOcupado
+            ErrorDominio.TurnosEnPeriodo
         else -> null
     }
 }

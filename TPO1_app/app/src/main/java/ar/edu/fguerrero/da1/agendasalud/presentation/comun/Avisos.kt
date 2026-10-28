@@ -68,6 +68,7 @@ fun MostrarAvisos(avisos: Flow<Aviso>) {
 @StringRes
 fun ErrorDominio.mensaje(): Int = when (this) {
     ErrorDominio.HorarioOcupado -> R.string.error_horario_ocupado
+    ErrorDominio.TurnosEnPeriodo -> R.string.error_turnos_en_periodo
     ErrorDominio.PeriodoBloqueado -> R.string.error_periodo_bloqueado
     ErrorDominio.FueraDeHorario -> R.string.error_fuera_de_horario
     ErrorDominio.IntervaloInvalido -> R.string.error_intervalo_invalido

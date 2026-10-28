@@ -1,5 +1,6 @@
 package ar.edu.fguerrero.da1.agendasalud
 
+import android.content.pm.ApplicationInfo
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.compose.setContent
@@ -15,8 +16,12 @@ import ar.edu.fguerrero.da1.agendasalud.ui.theme.AgendaSaludTheme
 class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Oculta el contenido en apps recientes y bloquea capturas (RNF03)
-        window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
+        // Oculta el contenido en apps recientes y bloquea capturas (RNF03).
+        // En debug se permiten capturas para poder revisar las pantallas en desarrollo.
+        val esDebug = applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
+        if (!esDebug) {
+            window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
+        }
         enableEdgeToEdge()
 
         val sesion = (application as AgendaSaludApp).container.sesion
@@ -24,7 +29,7 @@ class MainActivity : FragmentActivity() {
             AgendaSaludTheme {
                 val desbloqueada by sesion.desbloqueada.collectAsStateWithLifecycle()
                 if (desbloqueada) {
-                    AgendaSaludNavHost()
+                    AgendaSaludNavHost(alCerrarSesion = sesion::bloquear)
                 } else {
                     LoginScreen()
                 }

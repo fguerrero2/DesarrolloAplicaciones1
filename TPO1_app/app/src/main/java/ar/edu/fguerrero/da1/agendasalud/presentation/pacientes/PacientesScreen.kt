@@ -26,12 +26,14 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -66,6 +68,12 @@ fun PacientesScreen(
 
     var editando by remember { mutableStateOf<Paciente?>(null) }
     var fichaDe by remember { mutableStateOf<Long?>(null) }
+
+    // Al cerrar un diálogo el foco vuelve al buscador y abriría el teclado sin que nadie lo pida
+    val foco = LocalFocusManager.current
+    LaunchedEffect(editando, fichaDe) {
+        if (editando == null && fichaDe == null) foco.clearFocus()
+    }
 
     Column(Modifier.fillMaxSize()) {
         Encabezado(stringResource(R.string.pacientes_titulo))

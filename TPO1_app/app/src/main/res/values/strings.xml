@@ -8,6 +8,8 @@
     <string name="guardar">Guardar</string>
     <string name="guardar_cambio">Guardar cambio</string>
     <string name="elegir">elegir</string>
+    <string name="ahora_no">Ahora no</string>
+    <string name="cerrar_sesion">Cerrar sesión</string>
 
     <!-- Navegación -->
     <string name="nav_hoy">Hoy</string>
@@ -16,10 +18,11 @@
     <string name="nav_cobros">Cobros</string>
 
     <!-- Login (wireframe 01) -->
-    <string name="login_lema">Tu agenda y tus cobros, en este celular.</string>
     <string name="login_titulo">Ingresar</string>
     <string name="login_crear_titulo">Crear usuario</string>
-    <string name="login_crear_descripcion">Es la primera vez que usás AgendaSalud en este celular. Creá tu usuario y contraseña para proteger los datos de tus pacientes.</string>
+    <string name="login_crear_descripcion">Creá tu usuario y contraseña para proteger los datos de tus pacientes en este celular.</string>
+    <string name="login_sin_usuario">¿Todavía no tenés usuario?</string>
+    <string name="login_registrarse">Registrarse</string>
     <string name="login_usuario">Usuario</string>
     <string name="login_contrasenia">Contraseña</string>
     <string name="login_confirmar">Repetir contraseña</string>
@@ -30,6 +33,7 @@
     <string name="login_error_usuario_vacio">Ingresá un usuario.</string>
     <string name="login_error_contrasenia_corta">La contraseña debe tener al menos 6 caracteres.</string>
     <string name="login_error_no_coinciden">Las contraseñas no coinciden.</string>
+    <string name="login_error_sin_usuario">Todavía no hay un usuario creado en este celular. Tocá Registrarse.</string>
     <string name="login_error_credenciales">Usuario o contraseña incorrectos.</string>
 
     <!-- Hoy y Agenda (wireframes 02 y 03) -->
@@ -58,7 +62,7 @@
     <string name="turno_cobro_al_completar">Registrar cobro se habilita al completar la sesión.</string>
     <string name="turno_completar">Completar sesión</string>
     <string name="turno_reprogramar">Reprogramar</string>
-    <string name="turno_reprogramar_actual">%1$s · hoy está el %2$s a las %3$s</string>
+    <string name="turno_reprogramar_actual">%1$s · turno actual: %2$s a las %3$s</string>
     <string name="turno_cancelar">Cancelar turno</string>
     <string name="turno_cancelar_pregunta">¿Cancelar el turno de %1$s de las %2$s?</string>
     <string name="turno_cancelar_confirmar">Cancelar turno</string>
@@ -151,6 +155,7 @@
 
     <!-- Errores -->
     <string name="error_horario_ocupado">Ese horario ya está ocupado por otro turno.</string>
+    <string name="error_turnos_en_periodo">Hay turnos programados en ese período. Reprogramalos o cancelalos antes de bloquear.</string>
     <string name="error_periodo_bloqueado">Ese horario está dentro de un período bloqueado.</string>
     <string name="error_fuera_de_horario">Fuera del horario de atención (lun a vie 9 a 18, sáb 9 a 12).</string>
     <string name="error_intervalo_invalido">El horario de fin tiene que ser posterior al de inicio.</string>

@@ -8,6 +8,7 @@ import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -253,22 +254,23 @@ fun WhatsAppDialog(borrador: BorradorWhatsApp, alCerrar: () -> Unit) {
             }
         },
         confirmButton = {
-            if (numero != null) {
+            Row {
                 TextButton(onClick = {
-                    if (abrirWhatsApp(context, numero, texto)) alCerrar()
-                    else {
-                        copiar(context, texto)
-                        aviso = R.string.whatsapp_no_disponible
-                    }
-                }) { Text(stringResource(R.string.whatsapp_abrir)) }
+                    copiar(context, texto)
+                    aviso = R.string.whatsapp_copiado
+                }) { Text(stringResource(R.string.whatsapp_copiar)) }
+                if (numero != null) {
+                    TextButton(onClick = {
+                        if (abrirWhatsApp(context, numero, texto)) alCerrar()
+                        else {
+                            copiar(context, texto)
+                            aviso = R.string.whatsapp_no_disponible
+                        }
+                    }) { Text(stringResource(R.string.whatsapp_abrir)) }
+                }
             }
         },
-        dismissButton = {
-            TextButton(onClick = {
-                copiar(context, texto)
-                aviso = R.string.whatsapp_copiado
-            }) { Text(stringResource(R.string.whatsapp_copiar)) }
-        },
+        dismissButton = { TextButton(onClick = alCerrar) { Text(stringResource(R.string.ahora_no)) } },
     )
 }
 

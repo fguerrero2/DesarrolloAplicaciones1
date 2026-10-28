@@ -13,6 +13,10 @@ TPO obligatorio con el desarrollo de la solución a un problema y su implementac
 
 
 
+### Documentación de la implementación
+
+📘 **[IMPLEMENTACION.md](./IMPLEMENTACION.md)**: pantallas, arquitectura, estructura de archivos, modelo de datos, reglas, seguridad, tests, pendientes y sugerencias de mejora.
+
 ### Definiciones generales
 
 Los profesionales independientes de psicología, psicopedagogía y fonoaudiología suelen administrar su actividad combinando calendario, WhatsApp, notas, planillas en papel y existe un problema con la gestión de turnos cuando se registra en una agenda física porque es complejo mantenerla actualizada con asistencia, reprogramaciones, cancelaciones y adicionalmente cuando el cobro de la sesión no queda saldado completamente, resulta poco agil llevar el registro de una sesión a la otra sin perder tiempo administrativo.

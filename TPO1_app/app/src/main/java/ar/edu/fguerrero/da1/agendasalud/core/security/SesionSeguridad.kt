@@ -24,6 +24,11 @@ class SesionSeguridad(
         _desbloqueada.value = true
     }
 
+    /** Cierre de sesión manual: vuelve a la pantalla de login. */
+    fun bloquear() {
+        _desbloqueada.value = false
+    }
+
     override fun onStop(owner: LifecycleOwner) {
         enSegundoPlanoDesde = SystemClock.elapsedRealtime()
     }
