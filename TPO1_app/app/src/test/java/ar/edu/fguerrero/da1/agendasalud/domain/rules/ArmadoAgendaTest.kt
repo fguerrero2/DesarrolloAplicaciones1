@@ -49,4 +49,10 @@ class ArmadoAgendaTest {
         assertTrue(agenda.any { it is ItemAgenda.Ocupado })
         assertTrue(10 in agenda.horasLibres())
     }
+
+    @Test
+    fun huecosQueYaEmpezaronNoSeOfrecen() {
+        val agenda = ArmadoAgenda.armar(viernes, emptyList(), emptyList(), ahora = viernes.atTime(14, 30))
+        assertEquals(listOf(15, 16, 17), agenda.horasLibres())
+    }
 }

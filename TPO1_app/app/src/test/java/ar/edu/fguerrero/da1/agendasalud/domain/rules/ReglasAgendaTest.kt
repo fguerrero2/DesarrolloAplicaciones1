@@ -74,7 +74,7 @@ class ReglasAgendaTest {
 
     @Test
     fun bloqueoSobreTurnoProgramadoSeRechaza() {
-        assertEquals(ErrorDominio.HorarioOcupado, ReglasAgenda.validarBloqueo(Intervalo(hora(8), hora(18)), listOf(turno(1, 10))))
+        assertEquals(ErrorDominio.TurnosEnPeriodo, ReglasAgenda.validarBloqueo(Intervalo(hora(8), hora(18)), listOf(turno(1, 10))))
     }
 
     @Test

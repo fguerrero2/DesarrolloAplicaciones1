@@ -40,6 +40,6 @@ fun formatearFechaCorta(valor: TemporalAccessor): String = formatoFechaCorta.for
 /** 02/10/2026 */
 fun formatearFechaNumerica(valor: TemporalAccessor): String = formatoFechaNumerica.format(valor)
 
-/** Viernes 2 de octubre de 2026 */
-fun formatearFechaLarga(valor: TemporalAccessor): String =
-    formatoFechaLarga.format(valor).replaceFirstChar { it.titlecase(localeAr) }
+/** Viernes 2 de octubre de 2026 (o "viernes…" dentro de una frase). */
+fun formatearFechaLarga(valor: TemporalAccessor, mayuscula: Boolean = true): String =
+    formatoFechaLarga.format(valor).let { if (mayuscula) it.replaceFirstChar { c -> c.titlecase(localeAr) } else it }

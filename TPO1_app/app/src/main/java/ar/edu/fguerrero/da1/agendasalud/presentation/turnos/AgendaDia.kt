@@ -36,11 +36,13 @@ import ar.edu.fguerrero.da1.agendasalud.core.util.formatearFechaLarga
 import ar.edu.fguerrero.da1.agendasalud.core.util.formatearHora
 import ar.edu.fguerrero.da1.agendasalud.core.util.formatearPesos
 import ar.edu.fguerrero.da1.agendasalud.domain.model.BloqueoAgenda
+import ar.edu.fguerrero.da1.agendasalud.domain.model.EstadoTurno
 import ar.edu.fguerrero.da1.agendasalud.domain.model.ItemAgenda
 import ar.edu.fguerrero.da1.agendasalud.domain.model.TurnoConPaciente
 import ar.edu.fguerrero.da1.agendasalud.presentation.comun.BotonAncho
 import ar.edu.fguerrero.da1.agendasalud.presentation.comun.CampoFecha
 import ar.edu.fguerrero.da1.agendasalud.presentation.comun.Encabezado
+import ar.edu.fguerrero.da1.agendasalud.presentation.comun.EstiloTarjeta
 import ar.edu.fguerrero.da1.agendasalud.presentation.comun.MostrarAvisos
 import ar.edu.fguerrero.da1.agendasalud.presentation.comun.TarjetaTexto
 import ar.edu.fguerrero.da1.agendasalud.presentation.comun.fabricaViewModel
@@ -120,7 +122,8 @@ private fun AgendaDia(viewModel: AgendaDiaViewModel, esHoy: Boolean) {
             items(estado.items, key = ::claveItem) { item ->
                 when (item) {
                     is ItemAgenda.Ocupado -> TarjetaTexto(
-                        listOf(
+                        estilo = if (item.turno.turno.estado == EstadoTurno.CANCELADO) EstiloTarjeta.NORMAL else EstiloTarjeta.DESTACADA,
+                        lineas = listOf(
                             "${formatearHora(item.turno.turno.inicio)}–${formatearHora(item.turno.turno.fin)} · ${item.turno.nombrePaciente}",
                             stringResource(
                                 R.string.agenda_sesion_de,
@@ -131,11 +134,13 @@ private fun AgendaDia(viewModel: AgendaDiaViewModel, esHoy: Boolean) {
                         onClick = { turnoSeleccionadoId = item.turno.turno.id },
                     )
                     is ItemAgenda.Libre -> TarjetaTexto(
-                        listOf(stringResource(R.string.agenda_disponible, formatearHora(item.inicio))),
+                        estilo = EstiloTarjeta.LIBRE,
+                        lineas = listOf(stringResource(R.string.agenda_disponible, formatearHora(item.inicio))),
                         onClick = { nuevoTurnoEn = item.inicio },
                     )
                     is ItemAgenda.Bloqueado -> TarjetaTexto(
-                        listOf(textoBloqueo(item.bloqueo), stringResource(R.string.agenda_horario_bloqueado)),
+                        estilo = EstiloTarjeta.BLOQUEADA,
+                        lineas = listOf(textoBloqueo(item.bloqueo), stringResource(R.string.agenda_horario_bloqueado)),
                         onClick = { bloqueoAEliminar = item.bloqueo },
                     )
                 }
@@ -147,14 +152,27 @@ private fun AgendaDia(viewModel: AgendaDiaViewModel, esHoy: Boolean) {
                 }
             }
 
-            item {
-                BotonAncho(stringResource(R.string.agenda_nuevo_turno), onClick = {
+        }
+
+        // Acciones siempre visibles, sin tener que scrollear la agenda
+        Row(
+            Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            BotonAncho(
+                stringResource(R.string.agenda_nuevo_turno),
+                modifier = Modifier.weight(1f),
+                onClick = {
                     val primerLibre = estado.items.filterIsInstance<ItemAgenda.Libre>().firstOrNull()?.inicio
                     nuevoTurnoEn = primerLibre ?: estado.fecha.atTime(LocalTime.of(9, 0))
-                })
-            }
+                },
+            )
             if (!esHoy) {
-                item { BotonAncho(stringResource(R.string.agenda_bloquear), onClick = { bloqueando = true }) }
+                BotonAncho(
+                    stringResource(R.string.agenda_bloquear),
+                    modifier = Modifier.weight(1f),
+                    onClick = { bloqueando = true },
+                )
             }
         }
     }
