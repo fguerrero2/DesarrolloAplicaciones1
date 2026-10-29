@@ -23,6 +23,12 @@ class ClaveBaseDatos(context: Context) {
     fun obtener(): ByteArray =
         if (archivo.exists()) descifrar(archivo.readBytes()) else generar()
 
+    /** Borra la clave guardada y la de Keystore. Sin ella la base anterior queda ilegible. */
+    fun borrar() {
+        archivo.delete()
+        KeyStore.getInstance(KEYSTORE).apply { load(null) }.deleteEntry(ALIAS)
+    }
+
     private fun generar(): ByteArray {
         val clave = ByteArray(LARGO_CLAVE).also { SecureRandom().nextBytes(it) }
         val cipher = Cipher.getInstance(TRANSFORMACION).apply { init(Cipher.ENCRYPT_MODE, claveKeystore()) }

@@ -14,6 +14,7 @@ sealed interface ErrorDominio {
     data object EstadoNoPermitido : ErrorDominio
     data object NoEncontrado : ErrorDominio
     data object ErrorGuardado : ErrorDominio
+    data object ErrorLectura : ErrorDominio
 }
 
 sealed interface Resultado<out T> {

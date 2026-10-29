@@ -61,6 +61,7 @@ class PacientesViewModel(
                     )
                 }
             }
+            .avisarSiFalla(PacientesUiState(cargando = false))
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), PacientesUiState())
 
     val ficha: StateFlow<FichaPaciente?> = seleccionadoId.flatMapLatest { id ->
@@ -71,7 +72,8 @@ class PacientesViewModel(
             turnos.observarCancelacionesDelAnio(id, anio),
             turnos.observarDePaciente(id),
         ) { saldo, cancelaciones, historial -> FichaPaciente(saldo, cancelaciones, anio, historial) }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+    }.avisarSiFalla(null)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     fun buscar(texto: String) {
         _busqueda.value = texto

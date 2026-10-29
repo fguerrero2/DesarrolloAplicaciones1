@@ -11,6 +11,15 @@
     <string name="ahora_no">Ahora no</string>
     <string name="cerrar_sesion">Cerrar sesión</string>
 
+    <!-- Apertura de la base cifrada -->
+    <string name="base_abriendo">Abriendo tus datos…</string>
+    <string name="base_error_titulo">No se pudieron abrir tus datos</string>
+    <string name="base_error_descripcion">Puede pasar si el celular cambió su configuración de seguridad (por ejemplo, se quitó el bloqueo de pantalla). Probá de nuevo; si sigue fallando, podés empezar con una agenda vacía.</string>
+    <string name="base_reintentar">Reintentar</string>
+    <string name="base_empezar_de_cero">Empezar de cero</string>
+    <string name="base_empezar_de_cero_explicacion">Se borran todos los pacientes, turnos y cobros guardados en este celular y no se pueden recuperar. Tu usuario y contraseña se mantienen.</string>
+    <string name="base_borrar_todo">Borrar todo</string>
+
     <!-- Navegación -->
     <string name="nav_hoy">Hoy</string>
     <string name="nav_agenda">Agenda</string>
@@ -46,6 +55,14 @@
     <string name="agenda_horario_bloqueado">Horario bloqueado</string>
     <string name="agenda_sesion_de">Sesión de %1$d min · %2$s</string>
     <string name="agenda_sin_atencion">No hay atención este día.</string>
+    <string name="agenda_sin_huecos">No quedan horarios libres en este día.</string>
+    <string name="agenda_ir_a_hoy">← Ir a hoy</string>
+    <string name="agenda_pendiente_cobro">Falta cobrar %1$s</string>
+    <string name="hoy_saldos_titulo">Saldos pendientes</string>
+    <string name="accion_dar_turno">Dar turno</string>
+    <string name="accion_ver_turno">Ver acciones del turno</string>
+    <string name="accion_quitar_bloqueo">Quitar bloqueo</string>
+    <string name="accion_ver_ficha">Ver ficha</string>
     <string name="agenda_nuevo_turno">+ Nuevo turno</string>
     <string name="agenda_bloquear">Bloquear período</string>
     <string name="estado_programado">Programada</string>
@@ -167,6 +184,7 @@
     <string name="error_estado_no_permitido">El turno ya no admite esta acción.</string>
     <string name="error_no_encontrado">No se encontró el registro.</string>
     <string name="error_guardado">No se pudo guardar. Probá de nuevo.</string>
+    <string name="error_lectura">No se pudieron leer los datos. Cerrá sesión y volvé a entrar.</string>
     <string name="error_elegir_paciente">Elegí un paciente.</string>
     <string name="error_duracion_invalida">Ingresá una duración en minutos.</string>
     <string name="error_motivo_vacio">Ingresá el motivo del bloqueo.</string>

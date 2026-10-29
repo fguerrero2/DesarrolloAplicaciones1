@@ -37,7 +37,7 @@ abstract class AgendaDatabase : RoomDatabase() {
     abstract fun cobroDao(): CobroDao
 
     companion object {
-        private const val NOMBRE = "agendasalud.db"
+        const val NOMBRE = "agendasalud.db"
 
         /** Abre la base cifrada con SQLCipher (RNF02). La clave viene de Android Keystore. */
         fun crear(context: Context, clave: ByteArray, nombre: String = NOMBRE): AgendaDatabase {
