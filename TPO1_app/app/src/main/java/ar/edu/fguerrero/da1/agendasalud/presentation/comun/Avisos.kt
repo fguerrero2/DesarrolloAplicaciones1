@@ -11,8 +11,10 @@ import androidx.lifecycle.viewModelScope
 import ar.edu.fguerrero.da1.agendasalud.R
 import ar.edu.fguerrero.da1.agendasalud.domain.model.ErrorDominio
 import ar.edu.fguerrero.da1.agendasalud.domain.model.Resultado
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 
@@ -28,6 +30,26 @@ abstract class ViewModelConAvisos : ViewModel() {
 
     protected fun avisar(aviso: Aviso) {
         canal.trySend(aviso)
+    }
+
+    /** Si una consulta falla, avisa y muestra [alternativo] en vez de cerrar la app. */
+    protected fun <T> Flow<T>.avisarSiFalla(alternativo: T): Flow<T> = catch {
+        if (it is CancellationException) throw it
+        avisar(Aviso.Error(ErrorDominio.ErrorLectura))
+        emit(alternativo)
+    }
+
+    /** Lanza una operación simple que no devuelve [Resultado]; si falla, avisa con [error]. */
+    protected fun lanzar(error: ErrorDominio = ErrorDominio.ErrorGuardado, bloque: suspend () -> Unit) {
+        viewModelScope.launch {
+            try {
+                bloque()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                avisar(Aviso.Error(error))
+            }
+        }
     }
 
     /**
@@ -79,4 +101,5 @@ fun ErrorDominio.mensaje(): Int = when (this) {
     ErrorDominio.EstadoNoPermitido -> R.string.error_estado_no_permitido
     ErrorDominio.NoEncontrado -> R.string.error_no_encontrado
     ErrorDominio.ErrorGuardado -> R.string.error_guardado
+    ErrorDominio.ErrorLectura -> R.string.error_lectura
 }
