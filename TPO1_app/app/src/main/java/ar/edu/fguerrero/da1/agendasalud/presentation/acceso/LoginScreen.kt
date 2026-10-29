@@ -131,7 +131,7 @@ fun LoginScreen(
                 )
             }
 
-            TextoError(estado.error?.let { stringResource(it) })
+            TextoError(estado.error?.let { stringResource(it) } ?: estado.errorDispositivo)
 
             Button(
                 onClick = {
@@ -167,7 +167,7 @@ fun LoginScreen(
                                 activity,
                                 tituloPrompt,
                                 alAutenticar = viewModel::ingresarConDispositivo,
-                                alFallar = {},
+                                alFallar = viewModel::falloDispositivo,
                             )
                         },
                         modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
