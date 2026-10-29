@@ -98,8 +98,9 @@ Capturas tomadas del emulador durante la prueba manual (`docs/capturas/`).
 
 - Siempre se muestra primero **Ingresar** (usuario + contraseña).
 - El botón **Registrarse** aparece **solo si todavía no hay usuario** en el celular (un único profesional por dispositivo).
-- Si hay huella o PIN configurado en el celular, aparece **"Ingresar con huella o PIN"** como atajo.
-- Archivos: `presentation/acceso/LoginScreen.kt`, `LoginViewModel.kt`, `core/security/Credenciales.kt`.
+- Si hay huella o PIN configurado en el celular, aparece **"Ingresar con huella o PIN"** como atajo. Si la huella falla se muestra el motivo; si el usuario cancela, no.
+- Después del login se **abre la base cifrada** ("Abriendo tus datos…"). Si no se puede abrir (por ejemplo, Android invalidó la clave del Keystore al quitar el bloqueo de pantalla), en vez de cerrarse la app muestra **"No se pudieron abrir tus datos"** con *Reintentar*, *Empezar de cero* (borra todo, con confirmación) y *Cerrar sesión*.
+- Archivos: `presentation/acceso/LoginScreen.kt`, `LoginViewModel.kt`, `AperturaBaseScreen.kt`, `core/security/Credenciales.kt`.
 
 ### 3.2 Hoy (wireframe 02)
 
@@ -215,7 +216,8 @@ flowchart LR
 - **Lecturas**: Room → `Flow` → ViewModel (`combine`, `stateIn`) → `UiState` → Compose. Los cambios en la base se reflejan solos en todas las pantallas.
 - **Escrituras**: ViewModel → caso de uso / repositorio → **transacción** (`AgendaDatabase.transaccion`) → `Resultado.Exito` o `Resultado.Fallo(ErrorDominio)`. El aviso de éxito (snackbar) solo se muestra **después** de una escritura confirmada.
 - **Inyección de dependencias manual**: `AppContainer` (creado en `AgendaSaludApp`). Los ViewModels se crean con `fabricaViewModel { contenedor -> ... }` (`presentation/comun/ViewModels.kt`). No se usa Hilt para mantenerlo simple.
-- **La base se abre de forma diferida** (`by lazy`): recién cuando una pantalla la necesita, es decir, después del login.
+- **La base se abre explícitamente después del login** (`AppContainer.abrirBase`), con estados `Cerrada → Abriendo → Lista | Error`. Se fuerza una primera lectura para detectar una clave inválida antes de mostrar las pantallas.
+- **Errores de lectura**: si una consulta falla con la app abierta, el ViewModel muestra un aviso ("No se pudieron leer los datos…") en vez de cerrarse (`ViewModelConAvisos.avisarSiFalla`).
 
 ---
 
@@ -226,8 +228,8 @@ Raíz del módulo: `TPO1_app/app/src/main/java/ar/edu/fguerrero/da1/agendasalud/
 ```
 agendasalud/
 ├── AgendaSaludApp.kt            Application: crea el AppContainer y registra el bloqueo por inactividad
-├── AppContainer.kt              Inyección de dependencias manual (base, repositorios, casos de uso)
-├── MainActivity.kt              Única Activity: Login o NavHost según la sesión; FLAG_SECURE en release
+├── AppContainer.kt              Inyección de dependencias manual; abre la base (EstadoBase) y "empezar de cero"
+├── MainActivity.kt              Única Activity: Login → apertura de base → NavHost; FLAG_SECURE en release
 │
 ├── core/
 │   ├── security/
@@ -276,7 +278,7 @@ agendasalud/
 │       └── PreferenciasRepositoryImpl.kt  DataStore: duración e importe sugeridos
 │
 ├── presentation/
-│   ├── acceso/                  Login y registro
+│   ├── acceso/                  Login, registro y pantallas de apertura / error de la base
 │   ├── comun/
 │   │   ├── Avisos.kt            Snackbar de avisos, ViewModelConAvisos, textos de ErrorDominio
 │   │   ├── Componentes.kt       Encabezado, BotonAncho, TarjetaTexto, CampoFecha, CampoHora, SelectorPaciente
@@ -413,6 +415,7 @@ Todas en `domain/rules/` (Kotlin puro, con tests).
 | Permisos | Ninguno peligroso (sin contactos, cámara ni ubicación) |
 | WhatsApp | Solo se abre con un borrador; nunca se envía automáticamente |
 | Navegación | Las rutas no llevan datos del paciente |
+| Falla de la clave | Si la base no abre, pantalla de error con *Reintentar* o *Empezar de cero* (borra base y clave, conserva el usuario). Nunca se muestran ni registran detalles técnicos que puedan incluir datos |
 
 > ⚠️ **Sin recuperación**: si se pierde el celular, se desinstala la app o se borran sus datos, la información **no se puede recuperar** (no hay backup ni servidor). Está declarado en la preentrega, pero conviene recordarlo al usuario (ver sugerencias).
 
@@ -430,11 +433,11 @@ Todas en `domain/rules/` (Kotlin puro, con tests).
 | RNF01 Offline | ✅ | Todo es local; no hay llamadas de red |
 | RNF02 Base cifrada + Keystore | ✅ | `AgendaDatabaseTest.archivoDeBaseEstaCifrado` |
 | RNF03 Privacidad | ✅ | Sin backups, sin logs de datos, sin permisos, `FLAG_SECURE` en release |
-| RNF04 Acceso | ⚠️ cambiado | Ahora usuario + contraseña (pedido del equipo), huella como atajo. **Actualizar el documento** |
+| RNF04 Acceso | ✅ modificado | Usuario y contraseña propios + huella/PIN como atajo + bloqueo a los 2 min + cerrar sesión. Ver justificación en §12 |
 | RNF05 Accesibilidad | 🟡 parcial | Botones ≥ 48 dp, estados con texto, `contentDescription` en íconos, encabezados semánticos. **Falta probar TalkBack y texto al 200 %** |
 | RNF06 Rendimiento | ⏳ sin medir | Falta la prueba con 500 pacientes / 5.000 turnos |
-| RNF07 Confiabilidad | ✅ | Transacciones + `Resultado`; reintento de completar sin duplicar (`AgendaDatabaseTest`) |
-| RNF08 Compatibilidad | ⚠️ | `minSdk` es **27** (Android 8.1), la preentrega dice API 26. Probado solo en API 34 y 35 |
+| RNF07 Confiabilidad | ✅ | Transacciones + `Resultado`; reintento de completar sin duplicar (`AgendaDatabaseTest`); errores de apertura y de lectura sin cierres inesperados |
+| RNF08 Compatibilidad | 🟡 | `minSdk` **26** (Android 8.0), igual que la preentrega. Probado en API 34 y 35; **falta probar en Android 8** |
 | RNF09 Mantenibilidad | ✅ | Reglas probadas sin Android; UI → ViewModel → repositorios |
 
 ---
@@ -481,17 +484,59 @@ Definidas en `gradle/libs.versions.toml`.
 
 ## 12. Cambios respecto de la preentrega
 
-| Tema | Preentrega | Implementado | Acción sugerida |
-|---|---|---|---|
-| Acceso (RNF04) | Autenticación del dispositivo | Usuario y contraseña propios + huella como atajo | Actualizar RNF04 |
-| Horario de atención | No definido | L-V 9–18, sáb 9–12, dom cerrado (fijo en código) | Agregar como regla en el documento |
-| Pantallas | ~31 wireframes | 5 pantallas; el resto son diálogos/paneles | Mencionar en el documento |
-| minSdk (RNF08) | API 26 | API 27 | Decidir y unificar |
-| Wireframe 01 | Texto "Tu agenda y tus cobros…" | Se sacó; "AgendaSalud" centrado y grande | Actualizar Figma |
-| Íconos | — | Material core + 4 vectores propios | — |
-| `.gitignore` | `data/` ignoraba cualquier carpeta "data" (¡incluido el código!) | `/data/` solo en la raíz; `gradle-wrapper.jar` ahora se versiona | — |
+La consigna pide que toda modificación significativa pueda **explicarse y justificarse**. Estos son los cambios, con su motivo y el texto sugerido para actualizar el documento del TPO.
 
----
+### 12.1 Acceso con usuario y contraseña (RNF04)
+
+- **Antes:** "El acceso requiere autenticación del dispositivo, la app vuelve a bloquearse al permanecer en segundo plano más de 2 minutos."
+- **Ahora:** usuario y contraseña propios de la app; la huella o el PIN del celular quedan como **atajo opcional**.
+- **Por qué:**
+  - Muchos profesionales comparten el celular con la familia o lo tienen sin bloqueo de pantalla; depender solo del bloqueo del dispositivo dejaba los datos de pacientes abiertos a cualquiera que lo desbloquee.
+  - Una contraseña propia separa "acceso al celular" de "acceso a la historia administrativa de pacientes".
+  - El wireframe 01 ya mostraba usuario y contraseña.
+- **Cómo se protege:** la contraseña nunca se guarda; solo un hash PBKDF2 con salt. Un único usuario por dispositivo.
+- **Texto sugerido:**
+  > **RNF04 Acceso.** El acceso requiere usuario y contraseña propios de la aplicación (la contraseña se almacena solo como hash PBKDF2 con salt). La huella o el PIN del dispositivo pueden usarse como atajo una vez creado el usuario. La app vuelve a pedir el acceso al permanecer más de 2 minutos en segundo plano o al cerrar sesión.
+
+### 12.2 Horario de atención (regla nueva)
+
+- **Antes:** no estaba definido.
+- **Ahora:** lunes a viernes de 9 a 18, sábados de 9 a 12, domingos sin atención. No se pueden dar turnos fuera de ese horario y la agenda muestra los huecos libres dentro de él.
+- **Por qué:** para mostrar "Disponible" (wireframes 02 y 03) hace falta saber cuándo atiende el profesional, y evita agendar por error un domingo o a la noche.
+- **Limitación:** está fijo en el código (`HorarioAtencion.kt`); hacerlo configurable es una mejora sugerida.
+- **Texto sugerido** (agregar a RF02):
+  > Los turnos solo pueden registrarse dentro del horario de atención (lunes a viernes de 9 a 18 h y sábados de 9 a 12 h).
+
+### 12.3 Cinco pantallas con diálogos en lugar de 31 pantallas
+
+- **Antes:** los wireframes muestran ~31 pantallas (cada formulario, confirmación y estado como pantalla aparte).
+- **Ahora:** 5 pantallas (Login, Hoy, Agenda, Pacientes, Cobros). Formularios, detalle, ficha y confirmaciones son **diálogos y paneles** sobre la pantalla actual.
+- **Por qué:**
+  - Menos navegación y menos carga cognitiva: el profesional nunca pierde de vista la agenda (mirada de Weiser, sección 4.2 de la consigna).
+  - Flujos más cortos entre sesiones: completar → cobrar → volver a la agenda sin salir de la pantalla.
+  - Las 31 pantallas del wireframe siguen representadas: son los mismos contenidos y estados, presentados como diálogos.
+
+### 12.4 Pantalla de login (wireframe 01)
+
+- Se quitó el texto "Tu agenda y tus cobros, en este celular."; "AgendaSalud" quedó centrado y grande.
+- Se agregó **Registrarse**, visible solo si todavía no hay usuario.
+- **Por qué:** pedido del equipo para simplificar la primera pantalla. **Actualizar el Figma.**
+
+### 12.5 Recuperación ante errores (nuevo, consigna 7.3)
+
+- Si la base cifrada no se puede abrir, la app ya no se cierra: muestra un error con *Reintentar* y *Empezar de cero*.
+- Si una lectura falla con la app abierta, se muestra un aviso en lugar de cerrarse.
+- **Por qué:** la consigna pide comunicar qué ocurre y qué puede hacer el usuario. El caso más realista es que Android invalide la clave del Keystore (por ejemplo, al quitar el bloqueo de pantalla).
+
+### 12.6 Otros
+
+| Tema | Detalle |
+|---|---|
+| minSdk | Unificado en **26** (Android 8.0), como dice RNF08 |
+| Estados offline y permisos | No aplican: la app no usa red ni permisos peligrosos. Se aclara en la defensa (consigna 7.3) |
+| Retrofit | No se usa: no hay comunicación remota en la v1 (la integración con prepagas era de la fase paga, fuera de alcance) |
+| Íconos | Material *core* + 4 vectores propios (el APK bajó de 29 a 22 MB) |
+| `.gitignore` | `data/` ignoraba también la capa de datos del código; ahora es `/data/`. Se versiona `gradle-wrapper.jar` |
 
 ## 13. Verificaciones pendientes
 
@@ -504,7 +549,7 @@ Cosas **no probadas todavía** o que conviene revisar antes de la entrega:
 - [ ] **Release**: generar un APK release y verificar `FLAG_SECURE` (pantalla en negro en recientes) y que la app funciona con R8 (hoy `optimization.enable = false`).
 - [ ] **RNF05 Accesibilidad**: TalkBack recorriendo las 5 pantallas; texto al 200 % (Ajustes → Pantalla → Tamaño de fuente) sin cortes, en especial los botones lado a lado de Agenda.
 - [ ] **RNF06 Rendimiento**: cargar 500 pacientes y 5.000 turnos ficticios y medir las consultas.
-- [ ] **RNF08 Compatibilidad**: probar en Android 8.1 (API 27) y en una versión reciente.
+- [ ] **RNF08 Compatibilidad**: probar en Android 8.0 (API 26) y en una versión reciente.
 - [ ] **Modo oscuro**: revisar contraste de las tarjetas (azul / rosa / borde).
 - [ ] **Zona horaria**: el emulador estaba en UTC; probar en hora de Argentina que "Hoy" y los huecos pasados se calculen bien cerca de la medianoche.
 - [ ] **Teléfonos**: `numeroWhatsApp` asume números argentinos (agrega `549` a números de 10 dígitos). Probar con formatos variados (`+54 9 11…`, `011 15…`).
@@ -532,19 +577,18 @@ Cosas **no probadas todavía** o que conviene revisar antes de la entrega:
 
 ### Técnicas
 
-1. **Unificar `minSdk`** con la preentrega (26 o 27).
-2. **Habilitar R8** en release (`optimization.enable = true`) y probar las reglas de keep de SQLCipher/Room.
-3. **Tests de ViewModel** con repositorios falsos (hoy solo hay tests de reglas y de base).
-4. **Tests de UI** con Compose (`createComposeRule`) para los flujos principales.
-5. **Tests de capturas** (Roborazzi/Paparazzi) para revisar pantallas sin emulador — útil en compus lentas.
-6. **Migraciones de Room**: el esquema v1 está exportado en `app/schemas/`; cualquier cambio de tablas necesita una migración.
-7. **Bloquear la clave de la base a la autenticación** (`setUserAuthenticationRequired`) para que la base no pueda abrirse sin login.
-8. **Limitar intentos de login** (demora creciente tras varios errores).
-9. **Inyección de dependencias con Hilt** si el proyecto crece.
-10. **CI en GitHub Actions**: compilar + tests + lint en cada PR.
-11. **Strings**: algunos textos del borrador de WhatsApp están en el ViewModel; moverlos a `strings.xml`.
-12. **Dividir `Daos.kt` y `Entidades.kt`** en un archivo por clase si crecen.
-13. Actualizar dependencias que lint marca como desactualizadas (no urgente).
+1. **Habilitar R8** en release (`optimization.enable = true`) y probar las reglas de keep de SQLCipher/Room.
+2. **Tests de ViewModel** con repositorios falsos (hoy solo hay tests de reglas y de base).
+3. **Tests de UI** con Compose (`createComposeRule`) para los flujos principales.
+4. **Tests de capturas** (Roborazzi/Paparazzi) para revisar pantallas sin emulador — útil en compus lentas.
+5. **Migraciones de Room**: el esquema v1 está exportado en `app/schemas/`; cualquier cambio de tablas necesita una migración.
+6. **Bloquear la clave de la base a la autenticación** (`setUserAuthenticationRequired`) para que la base no pueda abrirse sin login.
+7. **Limitar intentos de login** (demora creciente tras varios errores).
+8. **Inyección de dependencias con Hilt** si el proyecto crece.
+9. **CI en GitHub Actions**: compilar + tests + lint en cada PR.
+10. **Strings**: algunos textos del borrador de WhatsApp están en el ViewModel; moverlos a `strings.xml`.
+11. **Dividir `Daos.kt` y `Entidades.kt`** en un archivo por clase si crecen.
+12. Actualizar dependencias que lint marca como desactualizadas (no urgente).
 
 ### UX
 
