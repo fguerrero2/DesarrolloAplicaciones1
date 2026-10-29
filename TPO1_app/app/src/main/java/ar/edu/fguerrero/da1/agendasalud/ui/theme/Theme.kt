@@ -12,32 +12,37 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 
 private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
+    primary = Azul80,
+    primaryContainer = AzulContenedor30,
+    onPrimaryContainer = AlAzulContenedor90,
+    secondary = Gris80,
+    tertiary = Ambar80,
+    tertiaryContainer = AmbarContenedor30,
+    onTertiaryContainer = AlAmbarContenedor90,
+    background = Fondo10,
+    surface = Fondo10,
+    surfaceVariant = Superficie20,
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
-
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
+    primary = Azul40,
+    primaryContainer = AzulContenedor90,
+    onPrimaryContainer = AlAzulContenedor10,
+    secondary = Gris40,
+    secondaryContainer = GrisContenedor90,
+    tertiary = Ambar40,
+    tertiaryContainer = AmbarContenedor90,
+    onTertiaryContainer = AlAmbarContenedor10,
+    background = Fondo99,
+    surface = Fondo99,
+    surfaceVariant = Superficie95,
 )
 
 @Composable
 fun AgendaSaludTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
+    // Desactivado: la app usa su propia paleta para verse igual en todos los celulares
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {

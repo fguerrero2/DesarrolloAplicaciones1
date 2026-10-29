@@ -108,6 +108,7 @@ fun PacientesScreen(
                         textoSaldo(item.saldoCentavos),
                         if (!item.paciente.activo) stringResource(R.string.pacientes_inactivo) else null,
                     ),
+                    accion = stringResource(R.string.accion_ver_ficha),
                     onClick = {
                         fichaDe = item.paciente.id
                         viewModel.abrirFicha(item.paciente.id)
