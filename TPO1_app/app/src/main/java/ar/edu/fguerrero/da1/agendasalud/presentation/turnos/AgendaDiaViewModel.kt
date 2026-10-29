@@ -18,6 +18,7 @@ import ar.edu.fguerrero.da1.agendasalud.domain.repository.PacienteRepository
 import ar.edu.fguerrero.da1.agendasalud.domain.repository.PreferenciasRepository
 import ar.edu.fguerrero.da1.agendasalud.domain.repository.TurnoRepository
 import ar.edu.fguerrero.da1.agendasalud.domain.rules.ArmadoAgenda
+import ar.edu.fguerrero.da1.agendasalud.domain.rules.HorarioAtencion
 import ar.edu.fguerrero.da1.agendasalud.domain.usecase.CompletarSesion
 import ar.edu.fguerrero.da1.agendasalud.domain.usecase.RegistrarCobro
 import ar.edu.fguerrero.da1.agendasalud.domain.usecase.ReservarTurno
@@ -31,7 +32,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalDateTime
 
@@ -44,6 +44,10 @@ data class AgendaDiaUiState(
     val items: List<ItemAgenda> = emptyList(),
     val pacientesActivos: List<Paciente> = emptyList(),
     val saldosDelDia: List<SaldoDelDia> = emptyList(),
+    /** Lo que falta cobrar de cada turno completado (turnoId → centavos). */
+    val pendientePorTurno: Map<Long, Long> = emptyMap(),
+    /** false los días sin atención (domingos), para diferenciar del día sin huecos libres. */
+    val diaDeAtencion: Boolean = true,
     val duracionPredeterminada: Int = 60,
     val importePredeterminado: Long = 0,
 )
@@ -75,6 +79,10 @@ class AgendaDiaViewModel(
     private val valoresPredeterminados =
         combine(preferencias.duracionPredeterminadaMinutos, preferencias.importePredeterminadoCentavos) { d, i -> d to i }
 
+    private val saldosYPendientes = combine(cobros.observarSaldos(), cobros.observarPendientes()) { saldos, cargos ->
+        saldos to cargos.associate { it.turnoId to it.pendienteCentavos }
+    }
+
     val uiState: StateFlow<AgendaDiaUiState> = fecha.flatMapLatest { dia ->
         val desde = dia.atStartOfDay()
         val hasta = dia.plusDays(1).atStartOfDay()
@@ -82,9 +90,9 @@ class AgendaDiaViewModel(
             turnos.observarEntre(desde, hasta),
             bloqueos.observarEntre(desde, hasta),
             pacientes.observar(),
-            cobros.observarSaldos(),
+            saldosYPendientes,
             valoresPredeterminados,
-        ) { turnosDia, bloqueosDia, activos, saldos, (duracion, importe) ->
+        ) { turnosDia, bloqueosDia, activos, (saldos, pendientes), (duracion, importe) ->
             AgendaDiaUiState(
                 fecha = dia,
                 cargando = false,
@@ -93,11 +101,14 @@ class AgendaDiaViewModel(
                 saldosDelDia = turnosDia
                     .distinctBy { it.turno.pacienteId }
                     .mapNotNull { t -> saldos[t.turno.pacienteId]?.takeIf { it > 0 }?.let { SaldoDelDia(t.nombrePaciente, it) } },
+                pendientePorTurno = pendientes,
+                diaDeAtencion = HorarioAtencion.franja(dia) != null,
                 duracionPredeterminada = duracion,
                 importePredeterminado = importe,
             )
         }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AgendaDiaUiState())
+    }.avisarSiFalla(AgendaDiaUiState(cargando = false))
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AgendaDiaUiState())
 
     fun cambiarFecha(nueva: LocalDate) {
         fecha.value = nueva
@@ -131,7 +142,7 @@ class AgendaDiaViewModel(
     }
 
     fun abrirCobro(turnoId: Long) {
-        viewModelScope.launch {
+        lanzar(ErrorDominio.ErrorLectura) {
             val cargo = cobros.obtenerCargoDeTurno(turnoId)
             if (cargo == null || cargo.pendienteCentavos <= 0) avisar(Aviso.Exito(R.string.aviso_sesion_saldada))
             else _cobroEnCurso.value = cargo
@@ -184,7 +195,7 @@ class AgendaDiaViewModel(
         }
 
     fun eliminarBloqueo(id: Long) {
-        viewModelScope.launch {
+        lanzar {
             bloqueos.eliminar(id)
             avisar(Aviso.Exito(R.string.aviso_bloqueo_eliminado))
         }
