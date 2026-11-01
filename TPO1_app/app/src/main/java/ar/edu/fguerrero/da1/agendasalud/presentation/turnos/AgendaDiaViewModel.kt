@@ -36,7 +36,7 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 
 /** Saldo pendiente de un paciente con turno en el día (wireframe 02: "Pendiente de Ana: $12.000"). */
-data class SaldoDelDia(val nombrePaciente: String, val saldoCentavos: Long)
+data class SaldoDelDia(val pacienteId: Long, val nombrePaciente: String, val saldoCentavos: Long)
 
 data class AgendaDiaUiState(
     val fecha: LocalDate = LocalDate.now(),
@@ -100,7 +100,7 @@ class AgendaDiaViewModel(
                 pacientesActivos = activos,
                 saldosDelDia = turnosDia
                     .distinctBy { it.turno.pacienteId }
-                    .mapNotNull { t -> saldos[t.turno.pacienteId]?.takeIf { it > 0 }?.let { SaldoDelDia(t.nombrePaciente, it) } },
+                    .mapNotNull { t -> saldos[t.turno.pacienteId]?.takeIf { it > 0 }?.let { SaldoDelDia(t.turno.pacienteId, t.nombrePaciente, it) } },
                 pendientePorTurno = pendientes,
                 diaDeAtencion = HorarioAtencion.franja(dia) != null,
                 duracionPredeterminada = duracion,
