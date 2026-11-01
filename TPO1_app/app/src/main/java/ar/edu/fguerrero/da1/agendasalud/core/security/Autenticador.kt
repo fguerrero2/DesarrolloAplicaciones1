@@ -13,6 +13,12 @@ object Autenticador {
     // BIOMETRIC_WEAK | DEVICE_CREDENTIAL es la combinación admitida en todas las versiones desde API 26
     private const val AUTENTICADORES = BIOMETRIC_WEAK or DEVICE_CREDENTIAL
 
+    private val CANCELACIONES = setOf(
+        BiometricPrompt.ERROR_USER_CANCELED,
+        BiometricPrompt.ERROR_NEGATIVE_BUTTON,
+        BiometricPrompt.ERROR_CANCELED,
+    )
+
     fun disponible(activity: FragmentActivity): Boolean =
         BiometricManager.from(activity).canAuthenticate(AUTENTICADORES) == BiometricManager.BIOMETRIC_SUCCESS
 
@@ -27,7 +33,10 @@ object Autenticador {
             ContextCompat.getMainExecutor(activity),
             object : BiometricPrompt.AuthenticationCallback() {
                 override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) = alAutenticar()
-                override fun onAuthenticationError(errorCode: Int, errString: CharSequence) = alFallar(errString.toString())
+                override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                    // Cancelar no es un error: no se muestra nada
+                    if (errorCode !in CANCELACIONES) alFallar(errString.toString())
+                }
             },
         )
         val info = BiometricPrompt.PromptInfo.Builder()

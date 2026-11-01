@@ -21,6 +21,8 @@ data class LoginUiState(
     val registrando: Boolean = false,
     val procesando: Boolean = false,
     @param:StringRes val error: Int? = null,
+    /** Mensaje del sistema cuando falla la huella o el PIN (ya viene traducido). */
+    val errorDispositivo: String? = null,
 )
 
 class LoginViewModel(
@@ -39,7 +41,7 @@ class LoginViewModel(
     }
 
     fun mostrarRegistro(mostrar: Boolean) {
-        _uiState.update { it.copy(registrando = mostrar && !it.existeUsuario, error = null) }
+        _uiState.update { it.copy(registrando = mostrar && !it.existeUsuario, error = null, errorDispositivo = null) }
     }
 
     fun crearUsuario(usuario: String, contrasenia: String, confirmacion: String) {
@@ -70,8 +72,12 @@ class LoginViewModel(
     /** Desbloqueo con huella o PIN del dispositivo, solo si ya existe el usuario. */
     fun ingresarConDispositivo() = sesion.desbloquear()
 
+    fun falloDispositivo(mensaje: String) {
+        _uiState.update { it.copy(error = null, errorDispositivo = mensaje) }
+    }
+
     private fun procesar(operacion: () -> Boolean) {
-        _uiState.update { it.copy(procesando = true, error = null) }
+        _uiState.update { it.copy(procesando = true, error = null, errorDispositivo = null) }
         viewModelScope.launch {
             // PBKDF2 es costoso a propósito: fuera del hilo principal
             val ok = runCatching { withContext(Dispatchers.Default) { operacion() } }.getOrDefault(false)

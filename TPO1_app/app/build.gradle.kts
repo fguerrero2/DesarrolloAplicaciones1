@@ -13,7 +13,7 @@ android {
 
     defaultConfig {
         applicationId = "ar.edu.fguerrero.da1.agendasalud"
-        minSdk = 27
+        minSdk = 26
         targetSdk = 37
         versionCode = 1
         versionName = "1.0"

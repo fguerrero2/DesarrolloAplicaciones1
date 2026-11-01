@@ -82,7 +82,7 @@ fun NuevoTurnoDialog(
             }
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 SelectorPaciente(pacientes, paciente) { paciente = it }
-                CampoFecha(stringResource(R.string.campo_fecha), fecha) { fecha = it }
+                CampoFecha(stringResource(R.string.campo_fecha), fecha, soloDiasDeAtencion = true) { fecha = it }
                 CampoHora(stringResource(R.string.campo_hora), hora) { hora = it }
                 OutlinedTextField(
                     value = duracion,
@@ -191,7 +191,7 @@ fun ReprogramarDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(stringResource(R.string.turno_reprogramar_actual, item.nombrePaciente, formatearFechaNumerica(item.turno.inicio), formatearHora(item.turno.inicio)))
-                CampoFecha(stringResource(R.string.campo_nueva_fecha), fecha) { fecha = it }
+                CampoFecha(stringResource(R.string.campo_nueva_fecha), fecha, soloDiasDeAtencion = true) { fecha = it }
                 CampoHora(stringResource(R.string.campo_nueva_hora), hora) { hora = it }
                 TextoError(error?.let { stringResource(it) })
             }
