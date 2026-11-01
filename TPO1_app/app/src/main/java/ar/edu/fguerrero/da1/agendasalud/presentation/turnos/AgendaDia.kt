@@ -172,7 +172,7 @@ private fun AgendaDia(viewModel: AgendaDiaViewModel, esHoy: Boolean) {
                         modifier = Modifier.padding(top = 8.dp).semantics { heading() },
                     )
                 }
-                items(estado.saldosDelDia, key = { "saldo-${it.nombrePaciente}" }) {
+                items(estado.saldosDelDia, key = { "saldo-${it.pacienteId}" }) {
                     TarjetaTexto(listOf(stringResource(R.string.hoy_pendiente_de, it.nombrePaciente, formatearPesos(it.saldoCentavos))))
                 }
             }
