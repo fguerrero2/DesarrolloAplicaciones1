@@ -5,12 +5,17 @@ import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import ar.edu.fguerrero.da1.agendasalud.presentation.acceso.AbriendoBaseScreen
+import ar.edu.fguerrero.da1.agendasalud.presentation.acceso.ErrorBaseScreen
 import ar.edu.fguerrero.da1.agendasalud.presentation.acceso.LoginScreen
 import ar.edu.fguerrero.da1.agendasalud.presentation.navegacion.AgendaSaludNavHost
 import ar.edu.fguerrero.da1.agendasalud.ui.theme.AgendaSaludTheme
+import kotlinx.coroutines.launch
 
 // FragmentActivity es requerida por BiometricPrompt
 class MainActivity : FragmentActivity() {
@@ -24,14 +29,28 @@ class MainActivity : FragmentActivity() {
         }
         enableEdgeToEdge()
 
-        val sesion = (application as AgendaSaludApp).container.sesion
+        val container = (application as AgendaSaludApp).container
+        val sesion = container.sesion
         setContent {
             AgendaSaludTheme {
                 val desbloqueada by sesion.desbloqueada.collectAsStateWithLifecycle()
-                if (desbloqueada) {
-                    AgendaSaludNavHost(alCerrarSesion = sesion::bloquear)
-                } else {
-                    LoginScreen()
+                val estadoBase by container.estadoBase.collectAsStateWithLifecycle()
+                val scope = rememberCoroutineScope()
+
+                // La base cifrada se abre recién después del login
+                LaunchedEffect(desbloqueada) {
+                    if (desbloqueada) container.abrirBase()
+                }
+
+                when {
+                    !desbloqueada -> LoginScreen()
+                    estadoBase == EstadoBase.Lista -> AgendaSaludNavHost(alCerrarSesion = sesion::bloquear)
+                    estadoBase == EstadoBase.Error -> ErrorBaseScreen(
+                        alReintentar = { scope.launch { container.abrirBase() } },
+                        alEmpezarDeCero = { scope.launch { container.empezarDeCero() } },
+                        alSalir = sesion::bloquear,
+                    )
+                    else -> AbriendoBaseScreen()
                 }
             }
         }

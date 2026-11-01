@@ -19,6 +19,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -27,6 +28,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -48,6 +51,7 @@ import ar.edu.fguerrero.da1.agendasalud.presentation.comun.TarjetaTexto
 import ar.edu.fguerrero.da1.agendasalud.presentation.comun.fabricaViewModel
 import ar.edu.fguerrero.da1.agendasalud.presentation.disponibilidad.BloquearPeriodoDialog
 import ar.edu.fguerrero.da1.agendasalud.presentation.pagos.RegistrarCobroDialog
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 
@@ -93,12 +97,18 @@ private fun AgendaDia(viewModel: AgendaDiaViewModel, esHoy: Boolean) {
             Encabezado(stringResource(R.string.hoy_titulo), formatearFechaLarga(estado.fecha))
         } else {
             Encabezado(stringResource(R.string.agenda_titulo))
+            val hoy = LocalDate.now()
+            if (estado.fecha != hoy) {
+                TextButton(onClick = { viewModel.cambiarFecha(hoy) }, modifier = Modifier.padding(start = 8.dp)) {
+                    Text(stringResource(R.string.agenda_ir_a_hoy))
+                }
+            }
             Row(Modifier.padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = { viewModel.cambiarFecha(estado.fecha.minusDays(1)) }) {
                     Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, stringResource(R.string.agenda_dia_anterior))
                 }
                 Box(Modifier.weight(1f)) {
-                    CampoFecha(stringResource(R.string.campo_dia), estado.fecha, viewModel::cambiarFecha)
+                    CampoFecha(stringResource(R.string.campo_dia), estado.fecha, alCambiar = viewModel::cambiarFecha)
                 }
                 IconButton(onClick = { viewModel.cambiarFecha(estado.fecha.plusDays(1)) }) {
                     Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, stringResource(R.string.agenda_dia_siguiente))
@@ -116,37 +126,52 @@ private fun AgendaDia(viewModel: AgendaDiaViewModel, esHoy: Boolean) {
                     Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
                 }
             } else if (estado.items.isEmpty()) {
-                item { Text(stringResource(R.string.agenda_sin_atencion)) }
+                item {
+                    Text(stringResource(if (estado.diaDeAtencion) R.string.agenda_sin_huecos else R.string.agenda_sin_atencion))
+                }
             }
 
             items(estado.items, key = ::claveItem) { item ->
                 when (item) {
                     is ItemAgenda.Ocupado -> TarjetaTexto(
                         estilo = if (item.turno.turno.estado == EstadoTurno.CANCELADO) EstiloTarjeta.NORMAL else EstiloTarjeta.DESTACADA,
-                        lineas = listOf(
+                        accion = stringResource(R.string.accion_ver_turno),
+                        lineas = listOfNotNull(
                             "${formatearHora(item.turno.turno.inicio)}–${formatearHora(item.turno.turno.fin)} · ${item.turno.nombrePaciente}",
                             stringResource(
                                 R.string.agenda_sesion_de,
                                 item.turno.turno.duracionMinutos,
                                 stringResource(etiquetaEstado(item.turno.turno.estado)),
                             ),
+                            estado.pendientePorTurno[item.turno.turno.id]?.let {
+                                stringResource(R.string.agenda_pendiente_cobro, formatearPesos(it))
+                            },
                         ),
                         onClick = { turnoSeleccionadoId = item.turno.turno.id },
                     )
                     is ItemAgenda.Libre -> TarjetaTexto(
                         estilo = EstiloTarjeta.LIBRE,
+                        accion = stringResource(R.string.accion_dar_turno),
                         lineas = listOf(stringResource(R.string.agenda_disponible, formatearHora(item.inicio))),
                         onClick = { nuevoTurnoEn = item.inicio },
                     )
                     is ItemAgenda.Bloqueado -> TarjetaTexto(
                         estilo = EstiloTarjeta.BLOQUEADA,
+                        accion = stringResource(R.string.accion_quitar_bloqueo),
                         lineas = listOf(textoBloqueo(item.bloqueo), stringResource(R.string.agenda_horario_bloqueado)),
                         onClick = { bloqueoAEliminar = item.bloqueo },
                     )
                 }
             }
 
-            if (esHoy) {
+            if (esHoy && estado.saldosDelDia.isNotEmpty()) {
+                item {
+                    Text(
+                        stringResource(R.string.hoy_saldos_titulo),
+                        style = MaterialTheme.typography.titleSmall,
+                        modifier = Modifier.padding(top = 8.dp).semantics { heading() },
+                    )
+                }
                 items(estado.saldosDelDia, key = { "saldo-${it.nombrePaciente}" }) {
                     TarjetaTexto(listOf(stringResource(R.string.hoy_pendiente_de, it.nombrePaciente, formatearPesos(it.saldoCentavos))))
                 }

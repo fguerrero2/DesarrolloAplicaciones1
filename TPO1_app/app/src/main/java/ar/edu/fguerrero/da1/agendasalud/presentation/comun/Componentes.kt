@@ -12,6 +12,7 @@ import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDefaults
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -21,6 +22,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimeInput
@@ -35,12 +37,14 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import ar.edu.fguerrero.da1.agendasalud.R
 import ar.edu.fguerrero.da1.agendasalud.core.util.formatearFechaNumerica
 import ar.edu.fguerrero.da1.agendasalud.core.util.formatearHora
 import ar.edu.fguerrero.da1.agendasalud.domain.model.Paciente
+import ar.edu.fguerrero.da1.agendasalud.domain.rules.HorarioAtencion
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -88,6 +92,8 @@ fun TarjetaTexto(
     lineas: List<String>,
     modifier: Modifier = Modifier,
     estilo: EstiloTarjeta = EstiloTarjeta.NORMAL,
+    /** Qué hace tocar la tarjeta; TalkBack lo anuncia ("doble toque para Dar turno"). */
+    accion: String? = null,
     onClick: (() -> Unit)? = null,
 ) {
     val colores = MaterialTheme.colorScheme
@@ -106,18 +112,28 @@ fun TarjetaTexto(
             }
         }
     }
-    if (onClick != null) Card(onClick = onClick, modifier = modifier.fillMaxWidth(), colors = cardColors, border = borde) { contenido() }
+    if (onClick != null) {
+        val semantica = if (accion != null) Modifier.semantics { onClick(label = accion) { onClick(); true } } else Modifier
+        Card(onClick = onClick, modifier = modifier.fillMaxWidth().then(semantica), colors = cardColors, border = borde) { contenido() }
+    }
     else Card(modifier = modifier.fillMaxWidth(), colors = cardColors, border = borde) { contenido() }
 }
 
+/** [soloDiasDeAtencion] deshabilita en el calendario los días sin atención (domingos). */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CampoFecha(etiqueta: String, fecha: LocalDate, alCambiar: (LocalDate) -> Unit) {
+fun CampoFecha(
+    etiqueta: String,
+    fecha: LocalDate,
+    soloDiasDeAtencion: Boolean = false,
+    alCambiar: (LocalDate) -> Unit,
+) {
     var abierto by remember { mutableStateOf(false) }
     BotonAncho("$etiqueta: ${formatearFechaNumerica(fecha)}", onClick = { abierto = true })
     if (abierto) {
         val estado = rememberDatePickerState(
-            initialSelectedDateMillis = fecha.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+            initialSelectedDateMillis = fecha.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli(),
+            selectableDates = if (soloDiasDeAtencion) DiasDeAtencion else DatePickerDefaults.AllDates,
         )
         DatePickerDialog(
             onDismissRequest = { abierto = false },
@@ -131,6 +147,12 @@ fun CampoFecha(etiqueta: String, fecha: LocalDate, alCambiar: (LocalDate) -> Uni
             dismissButton = { TextButton(onClick = { abierto = false }) { Text(stringResource(R.string.cancelar)) } },
         ) { DatePicker(estado) }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+private object DiasDeAtencion : SelectableDates {
+    override fun isSelectableDate(utcTimeMillis: Long): Boolean =
+        HorarioAtencion.franja(Instant.ofEpochMilli(utcTimeMillis).atZone(ZoneOffset.UTC).toLocalDate()) != null
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

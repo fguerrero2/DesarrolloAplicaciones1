@@ -41,7 +41,8 @@ class CobrosViewModel(
                 cargos = if (pendientes) cargos.filter { it.pendienteCentavos > 0 } else cargos,
                 totalPendienteCentavos = cargos.sumOf { it.pendienteCentavos },
             )
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CobrosUiState())
+        }.avisarSiFalla(CobrosUiState(cargando = false))
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CobrosUiState())
 
     fun filtrarPendientes(soloPendientes: Boolean) {
         this.soloPendientes.value = soloPendientes
