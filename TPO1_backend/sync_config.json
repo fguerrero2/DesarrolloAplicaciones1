@@ -1,0 +1,25 @@
+{
+  "version": "1.0.0",
+  "updated_at": "2026-11-03T00:00:00Z",
+  "sync_policy": {
+    "automatic_enabled": true,
+    "interval_minutes": 360,
+    "description": "Frecuencia de sincronización automática cada 6 horas",
+    "require_unmetered_network": true,
+    "require_battery_not_low": true,
+    "require_device_idle": false,
+    "retry_interval_minutes": 30,
+    "max_retry_attempts": 3,
+    "sync_window": {
+      "enabled": true,
+      "preferred_start_hour_local": 21,
+      "preferred_end_hour_local": 23
+    }
+  },
+  "retention_policy": {
+    "keep_snapshots_days": 30,
+    "max_snapshots_per_tenant": 10
+  },
+  "conflict_resolution": "LAST_WRITE_WINS_BY_TIMESTAMP"
+}
+
