@@ -1,7 +1,6 @@
 package ar.edu.fguerrero.da1.agendasalud.presentation.pacientes
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -30,15 +29,15 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import ar.edu.fguerrero.da1.agendasalud.R
 import ar.edu.fguerrero.da1.agendasalud.core.util.formatearFechaCorta
 import ar.edu.fguerrero.da1.agendasalud.core.util.formatearHora
@@ -47,35 +46,40 @@ import ar.edu.fguerrero.da1.agendasalud.domain.model.ErrorDominio
 import ar.edu.fguerrero.da1.agendasalud.domain.model.Paciente
 import ar.edu.fguerrero.da1.agendasalud.presentation.comun.BotonAncho
 import ar.edu.fguerrero.da1.agendasalud.presentation.comun.Encabezado
+import ar.edu.fguerrero.da1.agendasalud.presentation.comun.ErrorCarga
+import ar.edu.fguerrero.da1.agendasalud.presentation.comun.EstadoUi
+import ar.edu.fguerrero.da1.agendasalud.presentation.comun.IndicadorCarga
 import ar.edu.fguerrero.da1.agendasalud.presentation.comun.MostrarAvisos
 import ar.edu.fguerrero.da1.agendasalud.presentation.comun.TarjetaTexto
 import ar.edu.fguerrero.da1.agendasalud.presentation.comun.TextoError
-import ar.edu.fguerrero.da1.agendasalud.presentation.comun.fabricaViewModel
+import ar.edu.fguerrero.da1.agendasalud.presentation.comun.datosOrNull
 import ar.edu.fguerrero.da1.agendasalud.presentation.comun.mensaje
 import ar.edu.fguerrero.da1.agendasalud.presentation.turnos.etiquetaEstado
 
 /** Wireframe 04 · Pacientes. La ficha, el alta y la edición se abren desde acá. */
 @Composable
-fun PacientesScreen(
-    viewModel: PacientesViewModel = viewModel(
-        factory = fabricaViewModel { PacientesViewModel(it.pacientes, it.turnos, it.cobros) }
-    ),
-) {
+fun PacientesScreen(modifier: Modifier = Modifier, viewModel: PacientesViewModel = hiltViewModel()) {
     val estado by viewModel.uiState.collectAsStateWithLifecycle()
     val busqueda by viewModel.busqueda.collectAsStateWithLifecycle()
     val verInactivos by viewModel.verInactivos.collectAsStateWithLifecycle()
+    val fichaDe by viewModel.fichaAbierta.collectAsStateWithLifecycle()
     MostrarAvisos(viewModel.avisos)
 
-    var editando by remember { mutableStateOf<Paciente?>(null) }
-    var fichaDe by remember { mutableStateOf<Long?>(null) }
+    val lista = estado.datosOrNull().orEmpty()
+
+    // Paciente en edición: 0 = alta nueva. Se guarda el id (entra en un Bundle) para sobrevivir a la rotación.
+    var editandoId by rememberSaveable { mutableStateOf<Long?>(null) }
+    val editando = editandoId?.let { id ->
+        if (id == 0L) Paciente(nombre = "") else lista.firstOrNull { it.paciente.id == id }?.paciente
+    }
 
     // Al cerrar un diálogo el foco vuelve al buscador y abriría el teclado sin que nadie lo pida
     val foco = LocalFocusManager.current
-    LaunchedEffect(editando, fichaDe) {
-        if (editando == null && fichaDe == null) foco.clearFocus()
+    LaunchedEffect(editandoId, fichaDe) {
+        if (editandoId == null && fichaDe == null) foco.clearFocus()
     }
 
-    Column(Modifier.fillMaxSize()) {
+    Column(modifier.fillMaxSize()) {
         Encabezado(stringResource(R.string.pacientes_titulo))
         OutlinedTextField(
             value = busqueda,
@@ -96,12 +100,14 @@ fun PacientesScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            if (estado.cargando) {
-                item { Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { CircularProgressIndicator() } }
-            } else if (estado.pacientes.isEmpty()) {
-                item { Text(stringResource(if (busqueda.isBlank()) R.string.pacientes_vacio else R.string.pacientes_sin_resultados)) }
+            when (estado) {
+                EstadoUi.Cargando -> item { IndicadorCarga() }
+                EstadoUi.Error -> item { ErrorCarga(alReintentar = viewModel::reintentar) }
+                is EstadoUi.Contenido -> if (lista.isEmpty()) {
+                    item { Text(stringResource(if (busqueda.isBlank()) R.string.pacientes_vacio else R.string.pacientes_sin_resultados)) }
+                }
             }
-            items(estado.pacientes, key = { it.paciente.id }) { item ->
+            items(lista, key = { it.paciente.id }) { item ->
                 TarjetaTexto(
                     listOfNotNull(
                         item.paciente.nombre,
@@ -109,31 +115,25 @@ fun PacientesScreen(
                         if (!item.paciente.activo) stringResource(R.string.pacientes_inactivo) else null,
                     ),
                     accion = stringResource(R.string.accion_ver_ficha),
-                    onClick = {
-                        fichaDe = item.paciente.id
-                        viewModel.abrirFicha(item.paciente.id)
-                    },
+                    onClick = { viewModel.abrirFicha(item.paciente.id) },
                 )
             }
             item {
-                BotonAncho(stringResource(R.string.pacientes_nuevo), onClick = { editando = Paciente(nombre = "") })
+                BotonAncho(stringResource(R.string.pacientes_nuevo), onClick = { editandoId = 0L })
             }
         }
     }
 
-    val pacienteFicha = estado.pacientes.firstOrNull { it.paciente.id == fichaDe }?.paciente
+    val pacienteFicha = lista.firstOrNull { it.paciente.id == fichaDe }?.paciente
     val ficha by viewModel.ficha.collectAsStateWithLifecycle()
     if (pacienteFicha != null) {
         FichaPacienteSheet(
             paciente = pacienteFicha,
             ficha = ficha,
-            alEditar = { editando = pacienteFicha },
+            alEditar = { editandoId = pacienteFicha.id },
             alDesactivar = { viewModel.desactivar(pacienteFicha.id) },
             alReactivar = { viewModel.reactivar(pacienteFicha) },
-            alCerrar = {
-                fichaDe = null
-                viewModel.abrirFicha(null)
-            },
+            alCerrar = { viewModel.abrirFicha(null) },
         )
     }
 
@@ -143,10 +143,10 @@ fun PacientesScreen(
             alGuardar = { actualizado, alTerminar ->
                 viewModel.guardar(actualizado) { error ->
                     alTerminar(error)
-                    if (error == null) editando = null
+                    if (error == null) editandoId = null
                 }
             },
-            alCerrar = { editando = null },
+            alCerrar = { editandoId = null },
         )
     }
 }
@@ -166,7 +166,7 @@ private fun FichaPacienteSheet(
     alReactivar: () -> Unit,
     alCerrar: () -> Unit,
 ) {
-    var confirmandoBaja by remember { mutableStateOf(false) }
+    var confirmandoBaja by rememberSaveable { mutableStateOf(false) }
 
     ModalBottomSheet(onDismissRequest = alCerrar) {
         Column(
@@ -226,9 +226,9 @@ private fun PacienteDialog(
     alGuardar: (Paciente, alTerminar: (ErrorDominio?) -> Unit) -> Unit,
     alCerrar: () -> Unit,
 ) {
-    var nombre by remember { mutableStateOf(paciente.nombre) }
-    var telefono by remember { mutableStateOf(paciente.telefono.orEmpty()) }
-    var error by remember { mutableStateOf<Int?>(null) }
+    var nombre by rememberSaveable { mutableStateOf(paciente.nombre) }
+    var telefono by rememberSaveable { mutableStateOf(paciente.telefono.orEmpty()) }
+    var error by rememberSaveable { mutableStateOf<Int?>(null) }
     var guardando by remember { mutableStateOf(false) }
 
     AlertDialog(

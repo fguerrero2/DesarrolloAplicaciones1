@@ -18,8 +18,9 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.time.LocalDate
 import java.time.LocalDateTime
+import javax.inject.Inject
 
-class TurnoRepositoryImpl(private val db: AgendaDatabase) : TurnoRepository {
+class TurnoRepositoryImpl @Inject constructor(private val db: AgendaDatabase) : TurnoRepository {
     private val turnoDao = db.turnoDao()
     private val bloqueoDao = db.bloqueoDao()
     private val cobroDao = db.cobroDao()

@@ -6,6 +6,7 @@ import ar.edu.fguerrero.da1.agendasalud.domain.model.CargoSesion
 import ar.edu.fguerrero.da1.agendasalud.domain.model.MedioCobro
 import ar.edu.fguerrero.da1.agendasalud.domain.model.Paciente
 import ar.edu.fguerrero.da1.agendasalud.domain.model.Resultado
+import ar.edu.fguerrero.da1.agendasalud.domain.model.ResumenRespaldo
 import ar.edu.fguerrero.da1.agendasalud.domain.model.Turno
 import ar.edu.fguerrero.da1.agendasalud.domain.model.TurnoConPaciente
 import kotlinx.coroutines.flow.Flow
@@ -66,4 +67,15 @@ interface PreferenciasRepository {
     val importePredeterminadoCentavos: Flow<Long>
     suspend fun guardarDuracionPredeterminada(minutos: Int)
     suspend fun guardarImportePredeterminado(centavos: Long)
+}
+
+/**
+ * Respaldo cifrado con una contraseña propia, para recuperar los datos si se pierde el celular.
+ * [destino] y [origen] son URIs de archivos que eligió el usuario; la contraseña se borra de memoria al terminar.
+ */
+interface RespaldoRepository {
+    suspend fun exportar(destino: String, contrasenia: CharArray): Resultado<ResumenRespaldo>
+
+    /** Reemplaza TODOS los datos actuales por los del respaldo, en una sola transacción. */
+    suspend fun restaurar(origen: String, contrasenia: CharArray): Resultado<ResumenRespaldo>
 }

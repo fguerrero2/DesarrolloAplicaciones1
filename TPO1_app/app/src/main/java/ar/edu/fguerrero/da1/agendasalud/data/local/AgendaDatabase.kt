@@ -8,6 +8,7 @@ import androidx.room.TypeConverters
 import ar.edu.fguerrero.da1.agendasalud.data.local.dao.BloqueoDao
 import ar.edu.fguerrero.da1.agendasalud.data.local.dao.CobroDao
 import ar.edu.fguerrero.da1.agendasalud.data.local.dao.PacienteDao
+import ar.edu.fguerrero.da1.agendasalud.data.local.dao.RespaldoDao
 import ar.edu.fguerrero.da1.agendasalud.data.local.dao.TurnoDao
 import ar.edu.fguerrero.da1.agendasalud.data.local.entity.BloqueoEntity
 import ar.edu.fguerrero.da1.agendasalud.data.local.entity.CambioTurnoEntity
@@ -35,6 +36,7 @@ abstract class AgendaDatabase : RoomDatabase() {
     abstract fun turnoDao(): TurnoDao
     abstract fun bloqueoDao(): BloqueoDao
     abstract fun cobroDao(): CobroDao
+    abstract fun respaldoDao(): RespaldoDao
 
     companion object {
         const val NOMBRE = "agendasalud.db"

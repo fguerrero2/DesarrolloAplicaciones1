@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -34,12 +35,13 @@ fun BloquearPeriodoDialog(
     alGuardar: (inicio: LocalDateTime, fin: LocalDateTime, motivo: String, alTerminar: (ErrorDominio?) -> Unit) -> Unit,
     alCerrar: () -> Unit,
 ) {
-    var desdeFecha by remember { mutableStateOf(fechaInicial) }
-    var desdeHora by remember { mutableStateOf(LocalTime.of(9, 0)) }
-    var hastaFecha by remember { mutableStateOf(fechaInicial) }
-    var hastaHora by remember { mutableStateOf(LocalTime.of(18, 0)) }
-    var motivo by remember { mutableStateOf("") }
-    var error by remember { mutableStateOf<Int?>(null) }
+    // rememberSaveable: lo cargado no se pierde al girar la pantalla
+    var desdeFecha by rememberSaveable { mutableStateOf(fechaInicial) }
+    var desdeHora by rememberSaveable { mutableStateOf(LocalTime.of(9, 0)) }
+    var hastaFecha by rememberSaveable { mutableStateOf(fechaInicial) }
+    var hastaHora by rememberSaveable { mutableStateOf(LocalTime.of(18, 0)) }
+    var motivo by rememberSaveable { mutableStateOf("") }
+    var error by rememberSaveable { mutableStateOf<Int?>(null) }
     var guardando by remember { mutableStateOf(false) }
 
     AlertDialog(

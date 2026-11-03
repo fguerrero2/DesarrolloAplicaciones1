@@ -16,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -42,10 +43,11 @@ fun RegistrarCobroDialog(
     alConfirmar: (montoCentavos: Long, fecha: LocalDate, medio: MedioCobro, alTerminar: (ErrorDominio?) -> Unit) -> Unit,
     alCerrar: () -> Unit,
 ) {
-    var monto by remember { mutableStateOf(pesosParaEditar(cargo.pendienteCentavos)) }
-    var fecha by remember { mutableStateOf(LocalDate.now()) }
-    var medio by remember { mutableStateOf(MedioCobro.EFECTIVO) }
-    var error by remember { mutableStateOf<Int?>(null) }
+    // rememberSaveable: lo escrito no se pierde al girar la pantalla (LocalDate y enum son Serializable)
+    var monto by rememberSaveable { mutableStateOf(pesosParaEditar(cargo.pendienteCentavos)) }
+    var fecha by rememberSaveable { mutableStateOf(LocalDate.now()) }
+    var medio by rememberSaveable { mutableStateOf(MedioCobro.EFECTIVO) }
+    var error by rememberSaveable { mutableStateOf<Int?>(null) }
     var guardando by remember { mutableStateOf(false) }
 
     AlertDialog(

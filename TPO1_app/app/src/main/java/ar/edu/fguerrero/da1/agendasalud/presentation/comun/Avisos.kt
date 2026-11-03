@@ -12,10 +12,19 @@ import ar.edu.fguerrero.da1.agendasalud.R
 import ar.edu.fguerrero.da1.agendasalud.domain.model.ErrorDominio
 import ar.edu.fguerrero.da1.agendasalud.domain.model.Resultado
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /** Mensaje de una sola vez para mostrar en el snackbar. */
@@ -24,12 +33,40 @@ sealed interface Aviso {
     data class Error(val error: ErrorDominio) : Aviso
 }
 
+/**
+ * Base de los ViewModels de pantalla.
+ * - Estado persistente → [estadoUi] devuelve un StateFlow (la pantalla siempre ve el último valor).
+ * - Eventos de una sola vez (snackbars) → [avisos], un Channel: cada aviso se consume una única vez
+ *   y no se repite al rotar o recomponer, igual que un SharedFlow(replay = 0) pero sin perder
+ *   avisos emitidos mientras la pantalla no está escuchando.
+ */
 abstract class ViewModelConAvisos : ViewModel() {
     private val canal = Channel<Aviso>(Channel.BUFFERED)
     val avisos: Flow<Aviso> = canal.receiveAsFlow()
 
+    private val reintentos = MutableStateFlow(0)
+
     protected fun avisar(aviso: Aviso) {
         canal.trySend(aviso)
+    }
+
+    /**
+     * Convierte un flujo de datos en [EstadoUi]: Cargando → Contenido, o Error si la consulta falla.
+     * [datos] se vuelve a crear con [reintentar]. WhileSubscribed(5 s) corta las consultas cuando
+     * la pantalla deja de verse, pero no durante una rotación.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    protected fun <T> estadoUi(datos: () -> Flow<T>): StateFlow<EstadoUi<T>> =
+        reintentos.flatMapLatest { intento ->
+            datos()
+                .map<T, EstadoUi<T>> { EstadoUi.Contenido(it) }
+                .onStart { if (intento > 0) emit(EstadoUi.Cargando) }
+                .catch { emit(EstadoUi.Error) }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), EstadoUi.Cargando)
+
+    /** Vuelve a ejecutar las consultas después de un [EstadoUi.Error]. */
+    fun reintentar() {
+        reintentos.update { it + 1 }
     }
 
     /** Si una consulta falla, avisa y muestra [alternativo] en vez de cerrar la app. */
@@ -102,4 +139,6 @@ fun ErrorDominio.mensaje(): Int = when (this) {
     ErrorDominio.NoEncontrado -> R.string.error_no_encontrado
     ErrorDominio.ErrorGuardado -> R.string.error_guardado
     ErrorDominio.ErrorLectura -> R.string.error_lectura
+    ErrorDominio.RespaldoInvalido -> R.string.error_respaldo_invalido
+    ErrorDominio.ErrorArchivo -> R.string.error_archivo
 }

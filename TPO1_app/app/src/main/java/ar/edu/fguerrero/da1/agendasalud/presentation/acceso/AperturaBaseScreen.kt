@@ -18,7 +18,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -29,8 +29,8 @@ import ar.edu.fguerrero.da1.agendasalud.R
 
 /** Mientras se abre la base cifrada (normalmente es instantáneo). */
 @Composable
-fun AbriendoBaseScreen() {
-    Box(Modifier.fillMaxSize().safeDrawingPadding(), contentAlignment = Alignment.Center) {
+fun AbriendoBaseScreen(modifier: Modifier = Modifier) {
+    Box(modifier.fillMaxSize().safeDrawingPadding(), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
             CircularProgressIndicator()
             Text(stringResource(R.string.base_abriendo))
@@ -43,10 +43,15 @@ fun AbriendoBaseScreen() {
  * Se ofrece reintentar y, como último recurso, empezar de cero con confirmación explícita.
  */
 @Composable
-fun ErrorBaseScreen(alReintentar: () -> Unit, alEmpezarDeCero: () -> Unit, alSalir: () -> Unit) {
-    var confirmando by remember { mutableStateOf(false) }
+fun ErrorBaseScreen(
+    alReintentar: () -> Unit,
+    alEmpezarDeCero: () -> Unit,
+    alSalir: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var confirmando by rememberSaveable { mutableStateOf(false) }
 
-    Box(Modifier.fillMaxSize().safeDrawingPadding().padding(24.dp), contentAlignment = Alignment.Center) {
+    Box(modifier.fillMaxSize().safeDrawingPadding().padding(24.dp), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(stringResource(R.string.base_error_titulo), style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
             Text(stringResource(R.string.base_error_descripcion), textAlign = TextAlign.Center)

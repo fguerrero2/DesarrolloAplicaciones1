@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -44,19 +45,16 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.fragment.app.FragmentActivity
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import ar.edu.fguerrero.da1.agendasalud.R
 import ar.edu.fguerrero.da1.agendasalud.core.security.Autenticador
 import ar.edu.fguerrero.da1.agendasalud.presentation.AgendaSaludLogo
 import ar.edu.fguerrero.da1.agendasalud.presentation.comun.TextoError
-import ar.edu.fguerrero.da1.agendasalud.presentation.comun.fabricaViewModel
 
 /** Wireframe 01 · Acceso protegido: ingreso y, si todavía no hay usuario, registro. */
 @Composable
-fun LoginScreen(
-    viewModel: LoginViewModel = viewModel(factory = fabricaViewModel { LoginViewModel(it.credenciales, it.sesion) }),
-) {
+fun LoginScreen(modifier: Modifier = Modifier, viewModel: LoginViewModel = hiltViewModel()) {
     val estado by viewModel.uiState.collectAsStateWithLifecycle()
     val activity = LocalActivity.current as FragmentActivity
     val huellaDisponible = remember { Autenticador.disponible(activity) }
@@ -67,11 +65,13 @@ fun LoginScreen(
     var confirmacion by remember { mutableStateOf("") }
 
     Box(
-        modifier = Modifier.fillMaxSize().safeDrawingPadding().imePadding(),
+        modifier = modifier.fillMaxSize().safeDrawingPadding().imePadding(),
         contentAlignment = Alignment.Center,
     ) {
         Column(
+            // En tablet o en horizontal el formulario no se estira a todo el ancho
             modifier = Modifier
+                .widthIn(max = 480.dp)
                 .verticalScroll(rememberScrollState())
                 .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -96,6 +96,11 @@ fun LoginScreen(
                 Text(
                     stringResource(R.string.login_crear_descripcion),
                     style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center,
+                )
+                Text(
+                    stringResource(R.string.login_tenia_respaldo),
+                    style = MaterialTheme.typography.bodySmall,
                     textAlign = TextAlign.Center,
                 )
             }

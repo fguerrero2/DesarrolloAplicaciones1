@@ -10,8 +10,9 @@ import ar.edu.fguerrero.da1.agendasalud.domain.rules.ReglasAgenda
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.time.LocalDateTime
+import javax.inject.Inject
 
-class BloqueoRepositoryImpl(private val db: AgendaDatabase) : BloqueoRepository {
+class BloqueoRepositoryImpl @Inject constructor(private val db: AgendaDatabase) : BloqueoRepository {
     private val dao = db.bloqueoDao()
     private val turnoDao = db.turnoDao()
 

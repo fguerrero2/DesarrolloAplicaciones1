@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import ar.edu.fguerrero.da1.agendasalud.R
 import ar.edu.fguerrero.da1.agendasalud.core.security.Credenciales
 import ar.edu.fguerrero.da1.agendasalud.core.security.SesionSeguridad
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -13,6 +14,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import javax.inject.Inject
 
 data class LoginUiState(
     val cargando: Boolean = true,
@@ -25,7 +27,8 @@ data class LoginUiState(
     val errorDispositivo: String? = null,
 )
 
-class LoginViewModel(
+@HiltViewModel
+class LoginViewModel @Inject constructor(
     private val credenciales: Credenciales,
     private val sesion: SesionSeguridad,
 ) : ViewModel() {

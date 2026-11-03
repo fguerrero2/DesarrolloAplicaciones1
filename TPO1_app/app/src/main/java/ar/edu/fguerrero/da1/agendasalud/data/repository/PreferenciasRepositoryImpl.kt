@@ -6,13 +6,15 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import ar.edu.fguerrero.da1.agendasalud.domain.repository.PreferenciasRepository
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import javax.inject.Inject
 
 private val Context.preferencias by preferencesDataStore(name = "preferencias")
 
 /** Solo preferencias no sensibles; nunca datos de pacientes ni claves. */
-class PreferenciasRepositoryImpl(private val context: Context) : PreferenciasRepository {
+class PreferenciasRepositoryImpl @Inject constructor(@param:ApplicationContext private val context: Context) : PreferenciasRepository {
 
     override val duracionPredeterminadaMinutos: Flow<Int> =
         context.preferencias.data.map { it[DURACION] ?: DURACION_DEFECTO }

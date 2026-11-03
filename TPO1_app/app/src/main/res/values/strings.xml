@@ -29,6 +29,7 @@
     <!-- Login (wireframe 01) -->
     <string name="login_titulo">Ingresar</string>
     <string name="login_crear_titulo">Crear usuario</string>
+    <string name="login_tenia_respaldo">¿Ya usabas AgendaSalud en otro celular? Creá tu usuario y después restaurá tu respaldo desde el menú ⋮.</string>
     <string name="login_crear_descripcion">Creá tu usuario y contraseña para proteger los datos de tus pacientes en este celular.</string>
     <string name="login_sin_usuario">¿Todavía no tenés usuario?</string>
     <string name="login_registrarse">Registrarse</string>
@@ -56,7 +57,8 @@
     <string name="agenda_sesion_de">Sesión de %1$d min · %2$s</string>
     <string name="agenda_sin_atencion">No hay atención este día.</string>
     <string name="agenda_sin_huecos">No quedan horarios libres en este día.</string>
-    <string name="agenda_ir_a_hoy">← Ir a hoy</string>
+    <string name="agenda_ir_a_hoy">Ir a hoy</string>
+    <string name="agenda_hoy_corto">Hoy</string>
     <string name="agenda_pendiente_cobro">Falta cobrar %1$s</string>
     <string name="hoy_saldos_titulo">Saldos pendientes</string>
     <string name="accion_dar_turno">Dar turno</string>
@@ -188,4 +190,25 @@
     <string name="error_elegir_paciente">Elegí un paciente.</string>
     <string name="error_duracion_invalida">Ingresá una duración en minutos.</string>
     <string name="error_motivo_vacio">Ingresá el motivo del bloqueo.</string>
+
+    <!-- Carga de datos -->
+    <string name="carga_error">No se pudieron leer los datos.</string>
+
+    <!-- Menú de cuenta y respaldo -->
+    <string name="menu_cuenta">Más opciones</string>
+    <string name="respaldo_exportar">Exportar respaldo</string>
+    <string name="respaldo_restaurar">Restaurar respaldo</string>
+    <string name="respaldo_exportar_explicacion">Se guarda un archivo cifrado con todos tus pacientes, turnos y cobros. Guardalo fuera del celular (por ejemplo, en Google Drive) para recuperar tus datos si lo perdés o te lo roban.\n\nElegí una contraseña para el respaldo y anotala: sin ella el archivo no se puede abrir, y nadie puede recuperarla.</string>
+    <string name="respaldo_clave">Contraseña del respaldo</string>
+    <string name="respaldo_clave_confirmar">Repetir contraseña</string>
+    <string name="respaldo_elegir_destino">Elegir dónde guardar</string>
+    <string name="respaldo_restaurar_advertencia">Se reemplazan TODOS los datos de este celular por los del respaldo. Lo que hayas cargado después de hacer ese respaldo se pierde.</string>
+    <string name="respaldo_elegir_archivo">Elegir archivo</string>
+    <string name="respaldo_restaurar_clave_explicacion">Escribí la contraseña que elegiste al exportar el respaldo.</string>
+    <string name="respaldo_restaurar_confirmar">Restaurar</string>
+    <string name="respaldo_procesando">Guardando respaldo…</string>
+    <string name="respaldo_exportado">Respaldo guardado: %1$d pacientes, %2$d turnos y %3$d cobros.</string>
+    <string name="respaldo_restaurado">Datos restaurados: %1$d pacientes, %2$d turnos y %3$d cobros.</string>
+    <string name="error_respaldo_invalido">No se pudo abrir el respaldo: la contraseña no es correcta o el archivo está dañado.</string>
+    <string name="error_archivo">No se pudo leer o guardar el archivo. Probá de nuevo o elegí otra ubicación.</string>
 </resources>

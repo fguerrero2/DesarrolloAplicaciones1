@@ -1,51 +1,51 @@
 package ar.edu.fguerrero.da1.agendasalud.presentation.pagos
 
-import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.SavedStateHandle
 import ar.edu.fguerrero.da1.agendasalud.domain.model.CargoPendiente
 import ar.edu.fguerrero.da1.agendasalud.domain.model.ErrorDominio
 import ar.edu.fguerrero.da1.agendasalud.domain.model.MedioCobro
 import ar.edu.fguerrero.da1.agendasalud.domain.repository.CobroRepository
 import ar.edu.fguerrero.da1.agendasalud.domain.usecase.RegistrarCobro
+import ar.edu.fguerrero.da1.agendasalud.presentation.comun.EstadoUi
 import ar.edu.fguerrero.da1.agendasalud.presentation.comun.ViewModelConAvisos
 import ar.edu.fguerrero.da1.agendasalud.presentation.turnos.AgendaDiaViewModel
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.stateIn
 import java.time.LocalDate
+import javax.inject.Inject
 
-data class CobrosUiState(
-    val cargando: Boolean = true,
-    val soloPendientes: Boolean = true,
-    val cargos: List<CargoPendiente> = emptyList(),
-    val totalPendienteCentavos: Long = 0,
+data class DatosCobros(
+    val cargos: List<CargoPendiente>,
+    val totalPendienteCentavos: Long,
 )
 
-class CobrosViewModel(
-    cobros: CobroRepository,
+@HiltViewModel
+class CobrosViewModel @Inject constructor(
+    private val cobros: CobroRepository,
     private val registrarCobro: RegistrarCobro,
+    private val estadoGuardado: SavedStateHandle,
 ) : ViewModelConAvisos() {
 
-    private val soloPendientes = MutableStateFlow(true)
+    /** Filtro elegido; se conserva al rotar y si Android mata el proceso. */
+    val soloPendientes: StateFlow<Boolean> = estadoGuardado.getStateFlow(CLAVE_SOLO_PENDIENTES, true)
 
     private val _cobroEnCurso = MutableStateFlow<CargoPendiente?>(null)
     val cobroEnCurso: StateFlow<CargoPendiente?> = _cobroEnCurso.asStateFlow()
 
-    val uiState: StateFlow<CobrosUiState> =
+    val uiState: StateFlow<EstadoUi<DatosCobros>> = estadoUi {
         combine(cobros.observarCargos(), soloPendientes) { cargos, pendientes ->
-            CobrosUiState(
-                cargando = false,
-                soloPendientes = pendientes,
+            DatosCobros(
                 cargos = if (pendientes) cargos.filter { it.pendienteCentavos > 0 } else cargos,
                 totalPendienteCentavos = cargos.sumOf { it.pendienteCentavos },
             )
-        }.avisarSiFalla(CobrosUiState(cargando = false))
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CobrosUiState())
+        }
+    }
 
     fun filtrarPendientes(soloPendientes: Boolean) {
-        this.soloPendientes.value = soloPendientes
+        estadoGuardado[CLAVE_SOLO_PENDIENTES] = soloPendientes
     }
 
     fun abrirCobro(cargo: CargoPendiente) {
@@ -63,5 +63,9 @@ class CobrosViewModel(
             avisar(AgendaDiaViewModel.avisoCobro(cargo.pendienteCentavos - montoCentavos))
             alTerminar(null)
         }
+    }
+
+    private companion object {
+        const val CLAVE_SOLO_PENDIENTES = "soloPendientes"
     }
 }

@@ -1,6 +1,7 @@
 package ar.edu.fguerrero.da1.agendasalud.presentation.comun
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -9,8 +10,10 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDefaults
 import androidx.compose.material3.DatePickerDialog
@@ -31,9 +34,10 @@ import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
@@ -50,26 +54,62 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneOffset
 
-/** Acción de cerrar sesión que el NavHost pone a disposición de todas las pantallas. */
-val LocalCerrarSesion = staticCompositionLocalOf<(() -> Unit)?> { null }
+/** Acciones del menú de cuenta que el NavHost pone a disposición de todas las pantallas. */
+class AccionesCuenta(
+    val exportarRespaldo: () -> Unit,
+    val restaurarRespaldo: () -> Unit,
+    val cerrarSesion: () -> Unit,
+)
+
+val LocalAccionesCuenta = staticCompositionLocalOf<AccionesCuenta?> { null }
 
 /**
  * Encabezado de pantalla como en el wireframe: "AgendaSalud" chico y el título grande.
- * Si hay sesión abierta, muestra el botón de cerrar sesión arriba a la derecha.
+ * Si hay sesión abierta, muestra arriba a la derecha el menú con respaldo y cerrar sesión.
  */
 @Composable
-fun Encabezado(titulo: String, subtitulo: String? = null) {
-    val cerrarSesion = LocalCerrarSesion.current
-    Row(Modifier.padding(start = 16.dp, end = 4.dp, top = 12.dp, bottom = 12.dp)) {
+fun Encabezado(titulo: String, modifier: Modifier = Modifier, subtitulo: String? = null) {
+    val acciones = LocalAccionesCuenta.current
+    Row(modifier.padding(start = 16.dp, end = 4.dp, top = 12.dp, bottom = 12.dp)) {
         Column(Modifier.weight(1f)) {
             Text(stringResource(R.string.app_name), style = MaterialTheme.typography.labelMedium)
             Text(titulo, style = MaterialTheme.typography.headlineMedium, modifier = Modifier.semantics { heading() })
             subtitulo?.let { Text(it, style = MaterialTheme.typography.titleMedium) }
         }
-        if (cerrarSesion != null) {
-            IconButton(onClick = cerrarSesion) {
-                Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = stringResource(R.string.cerrar_sesion))
-            }
+        if (acciones != null) MenuCuenta(acciones)
+    }
+}
+
+@Composable
+private fun MenuCuenta(acciones: AccionesCuenta) {
+    var abierto by rememberSaveable { mutableStateOf(false) }
+    Box {
+        IconButton(onClick = { abierto = true }) {
+            Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.menu_cuenta))
+        }
+        DropdownMenu(expanded = abierto, onDismissRequest = { abierto = false }) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.respaldo_exportar)) },
+                onClick = {
+                    abierto = false
+                    acciones.exportarRespaldo()
+                },
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.respaldo_restaurar)) },
+                onClick = {
+                    abierto = false
+                    acciones.restaurarRespaldo()
+                },
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.cerrar_sesion)) },
+                leadingIcon = { Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = null) },
+                onClick = {
+                    abierto = false
+                    acciones.cerrarSesion()
+                },
+            )
         }
     }
 }
@@ -125,11 +165,13 @@ fun TarjetaTexto(
 fun CampoFecha(
     etiqueta: String,
     fecha: LocalDate,
+    modifier: Modifier = Modifier,
     soloDiasDeAtencion: Boolean = false,
     alCambiar: (LocalDate) -> Unit,
 ) {
-    var abierto by remember { mutableStateOf(false) }
-    BotonAncho("$etiqueta: ${formatearFechaNumerica(fecha)}", onClick = { abierto = true })
+    // rememberSaveable: si se gira la pantalla con el calendario abierto, sigue abierto
+    var abierto by rememberSaveable { mutableStateOf(false) }
+    BotonAncho("$etiqueta: ${formatearFechaNumerica(fecha)}", onClick = { abierto = true }, modifier = modifier)
     if (abierto) {
         val estado = rememberDatePickerState(
             initialSelectedDateMillis = fecha.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli(),
@@ -157,9 +199,9 @@ private object DiasDeAtencion : SelectableDates {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CampoHora(etiqueta: String, hora: LocalTime, alCambiar: (LocalTime) -> Unit) {
-    var abierto by remember { mutableStateOf(false) }
-    BotonAncho("$etiqueta: ${formatearHora(hora)}", onClick = { abierto = true })
+fun CampoHora(etiqueta: String, hora: LocalTime, modifier: Modifier = Modifier, alCambiar: (LocalTime) -> Unit) {
+    var abierto by rememberSaveable { mutableStateOf(false) }
+    BotonAncho("$etiqueta: ${formatearHora(hora)}", onClick = { abierto = true }, modifier = modifier)
     if (abierto) {
         val estado = rememberTimePickerState(initialHour = hora.hour, initialMinute = hora.minute, is24Hour = true)
         AlertDialog(
@@ -178,9 +220,14 @@ fun CampoHora(etiqueta: String, hora: LocalTime, alCambiar: (LocalTime) -> Unit)
 }
 
 @Composable
-fun SelectorPaciente(pacientes: List<Paciente>, seleccionado: Paciente?, alElegir: (Paciente) -> Unit) {
-    var abierto by remember { mutableStateOf(false) }
-    Box {
+fun SelectorPaciente(
+    pacientes: List<Paciente>,
+    seleccionado: Paciente?,
+    modifier: Modifier = Modifier,
+    alElegir: (Paciente) -> Unit,
+) {
+    var abierto by rememberSaveable { mutableStateOf(false) }
+    Box(modifier) {
         BotonAncho(
             stringResource(R.string.campo_paciente, seleccionado?.nombre ?: stringResource(R.string.elegir)),
             onClick = { abierto = true },
@@ -201,6 +248,21 @@ fun SelectorPaciente(pacientes: List<Paciente>, seleccionado: Paciente?, alElegi
 
 /** Mensaje de error dentro de un diálogo. */
 @Composable
-fun TextoError(texto: String?) {
-    texto?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium) }
+fun TextoError(texto: String?, modifier: Modifier = Modifier) {
+    texto?.let { Text(it, modifier = modifier, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium) }
+}
+
+/** Spinner centrado mientras la pantalla carga sus datos. */
+@Composable
+fun IndicadorCarga(modifier: Modifier = Modifier) {
+    Box(modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+}
+
+/** La consulta falló: se dice claramente y se ofrece reintentar, en vez de mostrar una lista vacía. */
+@Composable
+fun ErrorCarga(alReintentar: () -> Unit, modifier: Modifier = Modifier) {
+    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(stringResource(R.string.carga_error), color = MaterialTheme.colorScheme.error)
+        BotonAncho(stringResource(R.string.base_reintentar), onClick = alReintentar)
+    }
 }

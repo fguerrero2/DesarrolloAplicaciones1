@@ -12,10 +12,13 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.AgendaSalud">
+        <!-- Acceso: login, registro y apertura de la base. Es la que abre el ícono de la app.
+             singleTop: si ya está arriba (login pedido sobre la app) no se apila otra igual. -->
         <activity
-            android:name=".MainActivity"
+            android:name=".presentation.acceso.AccesoActivity"
             android:exported="true"
             android:label="@string/app_name"
+            android:launchMode="singleTop"
             android:theme="@style/Theme.AgendaSalud"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
@@ -24,6 +27,14 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Principal: Hoy, Agenda, Pacientes y Cobros. No se exporta: solo se abre desde Acceso. -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="false"
+            android:label="@string/app_name"
+            android:theme="@style/Theme.AgendaSalud"
+            android:windowSoftInputMode="adjustResize" />
     </application>
 
 </manifest>

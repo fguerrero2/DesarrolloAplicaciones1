@@ -1,5 +1,6 @@
 package ar.edu.fguerrero.da1.agendasalud.presentation.pacientes
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import ar.edu.fguerrero.da1.agendasalud.R
 import ar.edu.fguerrero.da1.agendasalud.domain.model.ErrorDominio
@@ -9,24 +10,23 @@ import ar.edu.fguerrero.da1.agendasalud.domain.repository.CobroRepository
 import ar.edu.fguerrero.da1.agendasalud.domain.repository.PacienteRepository
 import ar.edu.fguerrero.da1.agendasalud.domain.repository.TurnoRepository
 import ar.edu.fguerrero.da1.agendasalud.presentation.comun.Aviso
+import ar.edu.fguerrero.da1.agendasalud.presentation.comun.EstadoUi
 import ar.edu.fguerrero.da1.agendasalud.presentation.comun.ViewModelConAvisos
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import java.time.LocalDate
+import javax.inject.Inject
 
 data class PacienteConSaldo(val paciente: Paciente, val saldoCentavos: Long)
-
-data class PacientesUiState(
-    val cargando: Boolean = true,
-    val pacientes: List<PacienteConSaldo> = emptyList(),
-)
 
 /** Wireframe 05 · Ficha del paciente. */
 data class FichaPaciente(
@@ -36,35 +36,38 @@ data class FichaPaciente(
     val turnos: List<Turno>,
 )
 
-@OptIn(ExperimentalCoroutinesApi::class)
-class PacientesViewModel(
+@OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
+@HiltViewModel
+class PacientesViewModel @Inject constructor(
     private val pacientes: PacienteRepository,
     private val turnos: TurnoRepository,
     private val cobros: CobroRepository,
+    private val estadoGuardado: SavedStateHandle,
 ) : ViewModelConAvisos() {
 
-    private val _busqueda = MutableStateFlow("")
-    val busqueda: StateFlow<String> = _busqueda.asStateFlow()
+    // Búsqueda, filtro y ficha abierta se guardan en el SavedStateHandle: sobreviven a la
+    // rotación y a que Android mate el proceso mientras la app está en segundo plano.
+    val busqueda: StateFlow<String> = estadoGuardado.getStateFlow(CLAVE_BUSQUEDA, "")
+    val verInactivos: StateFlow<Boolean> = estadoGuardado.getStateFlow(CLAVE_INACTIVOS, false)
+    val fichaAbierta: StateFlow<Long?> = estadoGuardado.getStateFlow(CLAVE_FICHA, null)
 
-    private val _verInactivos = MutableStateFlow(false)
-    val verInactivos: StateFlow<Boolean> = _verInactivos.asStateFlow()
-
-    private val seleccionadoId = MutableStateFlow<Long?>(null)
-
-    val uiState: StateFlow<PacientesUiState> =
-        combine(_busqueda, _verInactivos) { b, i -> b to i }
-            .flatMapLatest { (b, inactivos) ->
-                combine(pacientes.observar(b, inactivos), cobros.observarSaldos()) { lista, saldos ->
-                    PacientesUiState(
-                        cargando = false,
-                        pacientes = lista.map { PacienteConSaldo(it, saldos[it.id] ?: 0) },
-                    )
+    /**
+     * El campo de texto usa [busqueda] al instante; la consulta espera 300 ms sin teclear (debounce)
+     * para no ir a la base en cada letra. distinctUntilChanged evita repetir la misma consulta
+     * (por ejemplo, "ana" y "ana " buscan lo mismo). Al borrar la búsqueda, la lista vuelve enseguida.
+     */
+    val uiState: StateFlow<EstadoUi<List<PacienteConSaldo>>> = estadoUi {
+        combine(busqueda, verInactivos) { texto, inactivos -> texto.trim() to inactivos }
+            .distinctUntilChanged()
+            .debounce { (texto, _) -> if (texto.isEmpty()) 0L else ESPERA_BUSQUEDA_MS }
+            .flatMapLatest { (texto, inactivos) ->
+                combine(pacientes.observar(texto, inactivos), cobros.observarSaldos()) { lista, saldos ->
+                    lista.map { PacienteConSaldo(it, saldos[it.id] ?: 0) }
                 }
             }
-            .avisarSiFalla(PacientesUiState(cargando = false))
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), PacientesUiState())
+    }
 
-    val ficha: StateFlow<FichaPaciente?> = seleccionadoId.flatMapLatest { id ->
+    val ficha: StateFlow<FichaPaciente?> = fichaAbierta.flatMapLatest { id ->
         if (id == null) return@flatMapLatest flowOf(null)
         val anio = LocalDate.now().year
         combine(
@@ -76,15 +79,15 @@ class PacientesViewModel(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     fun buscar(texto: String) {
-        _busqueda.value = texto
+        estadoGuardado[CLAVE_BUSQUEDA] = texto
     }
 
     fun mostrarInactivos(mostrar: Boolean) {
-        _verInactivos.value = mostrar
+        estadoGuardado[CLAVE_INACTIVOS] = mostrar
     }
 
     fun abrirFicha(id: Long?) {
-        seleccionadoId.value = id
+        estadoGuardado[CLAVE_FICHA] = id
     }
 
     fun guardar(paciente: Paciente, alTerminar: (ErrorDominio?) -> Unit) =
@@ -94,11 +97,18 @@ class PacientesViewModel(
         }
 
     fun desactivar(id: Long) = ejecutar({ pacientes.desactivar(id) }) {
-        seleccionadoId.value = null
+        abrirFicha(null)
         avisar(Aviso.Exito(R.string.aviso_paciente_desactivado))
     }
 
     fun reactivar(paciente: Paciente) = ejecutar({ pacientes.guardar(paciente.copy(activo = true)) }) {
         avisar(Aviso.Exito(R.string.aviso_paciente_reactivado))
+    }
+
+    private companion object {
+        const val CLAVE_BUSQUEDA = "busqueda"
+        const val CLAVE_INACTIVOS = "verInactivos"
+        const val CLAVE_FICHA = "fichaAbierta"
+        const val ESPERA_BUSQUEDA_MS = 300L
     }
 }
