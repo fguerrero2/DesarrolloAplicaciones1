@@ -108,6 +108,8 @@ object ModuloRed {
     @AlcanceApp
     fun alcanceApp(): CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
+    private val formatoJson = Json { ignoreUnknownKeys = true }
+
     @Provides
     @Singleton
     fun api(almacen: AlmacenCuenta): ApiAgendaSalud {
@@ -121,7 +123,7 @@ object ModuloRed {
         return Retrofit.Builder()
             .baseUrl(BuildConfig.URL_SERVIDOR)
             .client(cliente)
-            .addConverterFactory(Json { ignoreUnknownKeys = true }.asConverterFactory("application/json".toMediaType()))
+            .addConverterFactory(formatoJson.asConverterFactory("application/json".toMediaType()))
             .build()
             .create(ApiAgendaSalud::class.java)
     }

@@ -104,5 +104,4 @@ data class BajadaRespuesta(
 data class CalendarioRespuesta(
     val version: String,
     @SerialName("sync_policy") val politica: JsonObject,
-    @SerialName("conflict_resolution") val resolucionConflictos: String,
 )

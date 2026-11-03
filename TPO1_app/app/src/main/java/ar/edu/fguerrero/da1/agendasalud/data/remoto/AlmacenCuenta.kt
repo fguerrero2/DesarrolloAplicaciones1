@@ -37,7 +37,7 @@ data class EstadoSyncLocal(
  * token nuevo si el actual vence (dura 1 día y el backend no tiene renovación). Nunca va a disco.
  */
 @Singleton
-class AlmacenCuenta @Inject constructor(@param:ApplicationContext context: Context) {
+class AlmacenCuenta @Inject constructor(@ApplicationContext context: Context) {
 
     private val cifrador = CifradorKeystore("agendasalud_cuenta")
     private val archivoSesion = File(context.noBackupFilesDir, "sesion_remota")

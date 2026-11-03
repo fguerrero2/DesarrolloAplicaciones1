@@ -358,7 +358,6 @@ agendasalud/
 │   │   ├── Intervalo.kt         [inicio, fin) y superposición
 │   │   ├── BloqueoAgenda.kt
 │   │   ├── Cobro.kt             CargoSesion, Cobro, MedioCobro, CargoPendiente
-│   │   ├── CambioTurno.kt       Historial de reprogramaciones
 │   │   ├── ItemAgenda.kt        Fila de agenda: Ocupado / Libre / Bloqueado
 │   │   ├── Respaldo.kt          ResumenRespaldo (cuánto se guardó / restauró)
 │   │   ├── Sincronizacion.kt    EstadoSincronizacion (sealed)
