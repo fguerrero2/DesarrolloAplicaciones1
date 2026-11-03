@@ -29,7 +29,7 @@
 
 ## 1. Resumen
 
-App Android nativa (Kotlin + Jetpack Compose) para que un profesional independiente de salud gestione **agenda, pacientes y cobros** desde el celular, **sin conexión** y con los datos **cifrados en el dispositivo** (modelo *local-first*).
+App Android nativa (Kotlin + Jetpack Compose) para que un profesional independiente de salud gestione **agenda, pacientes y cobros** desde el celular, **sin conexión** y con los datos **cifrados en el dispositivo** (modelo *offline-first*). La cuenta y una copia cifrada de los datos viven en el **backend del equipo** (`TPO1_backend/`, FastAPI de Francisco); la app los sincroniza en segundo plano y el servidor no puede leerlos.
 
 **Lo que funciona hoy** (probado en emulador Android 14):
 
@@ -42,6 +42,7 @@ App Android nativa (Kotlin + Jetpack Compose) para que un profesional independie
 | Cobros | Lista de cargos pendientes o todos, total pendiente, registrar cobros totales o parciales (efectivo / Mercado Pago) |
 | WhatsApp | Tras reprogramar, borrador editable para avisar al paciente: abrir WhatsApp o copiar el texto |
 | Respaldo | Exportar un archivo cifrado con contraseña propia (a Drive, mail, pendrive) y restaurarlo en otro celular |
+| Cuenta y sincronización | Cuenta con email en el backend del equipo; copia cifrada de todos los datos según el calendario del servidor (cada 6 h, con wifi) o con *Sincronizar ahora*. En un celular nuevo se ingresa con la misma cuenta y los datos se descargan. Recuperación de contraseña por email |
 
 **Decisión de diseño principal:** son **5 pantallas** (Login + 4 pestañas) en **2 Activities**: `AccesoActivity` (login y apertura de la base) y `MainActivity` (las 4 pestañas). Todas las acciones (nuevo turno, cobro, reprogramar, ficha, respaldo, etc.) se resuelven con **diálogos y paneles inferiores** dentro de esas pantallas, sin navegar a pantallas nuevas.
 
@@ -83,9 +84,20 @@ En compus de bajo consumo (por ejemplo MacBook Air con i5 de 2 núcleos) el emul
 - **No compilar con Gradle mientras el emulador está corriendo** (compilar, cerrar Gradle con `./gradlew --stop`, recién ahí abrir el emulador).
 - Alternativas sin emulador: un celular Android por USB, o *Device Streaming* (Android Studio → Device Manager → Firebase).
 
+### Backend local
+
+La app en debug se conecta a `http://10.0.2.2:8000/` (la compu vista desde el emulador), que es donde corre el backend de Francisco con Docker:
+
+```bash
+cd TPO1_backend
+docker compose up -d        # API en el puerto 8000 + MongoDB
+```
+
+Ver `TPO1_backend/README.md`. Para release, poner la URL de Vercel en `URL_SERVIDOR` (`app/build.gradle.kts`).
+
 ### Usuario de prueba
 
-No hay usuario precargado: la primera vez se toca **Registrarse**. Para empezar de cero se borran los datos de la app (`adb shell pm clear ar.edu.fguerrero.da1.agendasalud`) — **esto borra todo, incluida la base**.
+No hay usuario precargado: la primera vez se toca **Registrarse** (con el backend corriendo; la cuenta se crea con un **email**). Para empezar de cero se borran los datos de la app (`adb shell pm clear ar.edu.fguerrero.da1.agendasalud`) — **esto borra todo, incluida la base**.
 
 ---
 
@@ -99,7 +111,11 @@ Capturas tomadas del emulador durante la prueba manual (`docs/capturas/`).
 |---|---|---|
 | ![](docs/capturas/01-login.png) | ![](docs/capturas/02-login-sin-usuario.png) | ![](docs/capturas/03-registro.png) |
 
-- Siempre se muestra primero **Ingresar** (usuario + contraseña).
+- Siempre se muestra primero **Ingresar** (email + contraseña de al menos 8 caracteres, como pide el backend).
+- **Registrarse** crea la cuenta en el servidor (necesita internet) y después la local.
+- **Ingresar en un celular que ya se usó**: la contraseña se verifica **localmente**, así se entra sin conexión. En segundo plano se obtiene el token del servidor.
+- **Ingresar en un celular nuevo**: se valida contra el servidor, se recupera la clave de datos y se crea la cuenta local; la primera sincronización **descarga** todos los datos.
+- **¿Olvidaste tu contraseña?**: el servidor manda un mail con un enlace `agendasalud://reset-password?token=…`; al tocarlo se abre la app en *Nueva contraseña*. Si se cambia desde el celular que tiene los datos, se conservan (la clave de datos se vuelve a envolver con la nueva contraseña); si se cambia desde otro, la copia del servidor deja de poder leerse y la app lo advierte antes.
 - El botón **Registrarse** aparece **solo si todavía no hay usuario** en el celular (un único profesional por dispositivo).
 - Si hay huella o PIN configurado en el celular, aparece **"Ingresar con huella o PIN"** como atajo. Si la huella falla se muestra el motivo; si el usuario cancela, no.
 - Después del login se **abre la base cifrada** ("Abriendo tus datos…"). Si no se puede abrir (por ejemplo, Android invalidó la clave del Keystore al quitar el bloqueo de pantalla), en vez de cerrarse la app muestra **"No se pudieron abrir tus datos"** con *Reintentar*, *Empezar de cero* (borra todo, con confirmación) y *Cerrar sesión*.
@@ -170,11 +186,20 @@ Capturas tomadas del emulador durante la prueba manual (`docs/capturas/`).
 
 - **Exportar respaldo**: se elige una contraseña del respaldo (dos veces) → el selector de Android pide dónde guardar (`agendasalud-AAAA-MM-DD.respaldo`; puede ser Google Drive) → "Respaldo guardado: N pacientes, N turnos y N cobros".
 - **Restaurar respaldo**: advertencia (*reemplaza todos los datos*) → elegir el archivo → contraseña → "Datos restaurados…". Si la contraseña es incorrecta, el diálogo queda abierto con el error.
-- **Celular nuevo o robado**: instalar la app, **Registrarse** (la pantalla de registro lo recuerda) y desde el menú ⋮ **Restaurar respaldo**.
+- **Celular nuevo o robado**: lo habitual es **Ingresar** con la misma cuenta (los datos bajan del servidor, §3.8). El respaldo en archivo es una copia propia, independiente del servidor: en el celular nuevo se ingresa y se usa **Restaurar respaldo**.
 - El archivo está cifrado con **AES-256-GCM** y una clave derivada de la contraseña del respaldo (PBKDF2, 120.000 iteraciones). Google Drive solo ve bytes ilegibles. **Si se olvida esa contraseña, el respaldo no se puede abrir.**
 - Archivos: `presentation/respaldo/RespaldoDialogos.kt`, `RespaldoViewModel.kt`, `data/repository/RespaldoRepositoryImpl.kt`, `data/respaldo/RespaldoJson.kt`, `data/local/dao/RespaldoDao.kt`, `core/security/CifradoRespaldo.kt`.
 
-### 3.8 Mapa de navegación
+### 3.8 Sincronización con el backend (menú ⋮)
+
+- Arriba del menú se ve el estado: *Sincronizado hoy a las 21:04*, *Sin conexión…*, *Sincronizando…*
+- **Cuándo**: según el **calendario que define el servidor** (`sync_config.json`, `GET /sync/schedule`): hoy cada 6 horas, solo con wifi, con batería no baja y empezando en la franja de 21 a 23. También con **Sincronizar ahora** y en el primer ingreso de un celular.
+- **Qué se sube**: una **copia completa** cifrada (el mismo formato que el respaldo en archivo). El servidor guarda la última y un historial.
+- **Conflictos** (`LAST_WRITE_WINS_BY_TIMESTAMP`): si otro celular subió una versión nueva y en este no hubo cambios, se baja y reemplaza. Si hubo cambios en los dos, gana la copia más reciente.
+- La app **nunca espera a la red**: todo se guarda primero en Room.
+- Detalle técnico en §4.1.
+
+### 3.9 Mapa de navegación
 
 ```mermaid
 flowchart TD
@@ -197,7 +222,7 @@ flowchart TD
     P -->|tocar paciente| FP[Panel ficha] --> EP[Editar / Desactivar]
     P -->|+ Nuevo paciente| NP[Diálogo paciente]
     C -->|Registrar cobro| RC
-    N -->|menú ⋮| RS[Exportar / Restaurar respaldo]
+    N -->|menú ⋮| RS[Sincronizar ahora / Exportar / Restaurar respaldo]
     N -->|Cerrar sesión: se cierra MainActivity y la base| L
     N -.->|2 min en segundo plano o proceso muerto:<br/>login ENCIMA, al volver sigue donde estaba| L
 ```
@@ -255,6 +280,48 @@ flowchart LR
 - **La base se abre explícitamente después del login** (`BaseDatosCifrada.abrir`, un `@Singleton`), con estados `Cerrada → Abriendo → Lista | Error`, y se cierra al cerrar sesión. La base **no** es singleton en Hilt: cada repositorio la pide al crearse, así después de un nuevo login los ViewModels nuevos reciben la base recién abierta.
 - **Errores de lectura**: si una consulta falla con la app abierta, la pantalla pasa a `EstadoUi.Error` en vez de cerrarse.
 
+### 4.1 Integración con el backend del equipo
+
+```mermaid
+flowchart LR
+    subgraph App
+        R[(Room cifrada<br/>fuente de verdad)] --> I[Instantanea<br/>copia completa JSON]
+        I --> S[Sincronizador]
+        W[WorkManager<br/>calendario del servidor] --> S
+        S --> A[Retrofit<br/>ApiAgendaSalud]
+    end
+    A <-->|HTTPS + JWT<br/>copia cifrada AES-GCM| B[TPO1_backend<br/>FastAPI en Vercel]
+    B --> M[(MongoDB Atlas)]
+```
+
+**Endpoints que usa la app** (contrato en `TPO1_backend/app/models/schemas.py`, copiado en `data/remoto/ApiAgendaSalud.kt`):
+
+| Endpoint | Cuándo |
+|---|---|
+| `POST /api/v1/auth/register` | Registrarse |
+| `POST /api/v1/auth/login` | Ingresar en un celular nuevo; obtener token después de un login local; token vencido |
+| `POST /api/v1/auth/recover-password` / `reset-password` | ¿Olvidaste tu contraseña? |
+| `GET /api/v1/sync/schedule` | Al abrir la app: programa WorkManager con la política del servidor |
+| `POST /api/v1/sync/push` / `GET /api/v1/sync/pull` | Cada sincronización |
+
+**Claves** (`core/security/ClavesCuenta.kt`, compatible con `CryptoService` del backend: PBKDF2-SHA256 de 120.000 iteraciones y AES-256-GCM):
+
+```
+contraseña ─PBKDF2(dek_salt aleatorio)──▶ KEK ──envuelve──▶ DEK (clave de datos aleatoria)
+contraseña ─PBKDF2(salt fijo + email)───▶ credencial ──▶ se manda como "password"
+DEK ──cifra──▶ copia completa de los datos (ciphertext + iv + auth_tag)
+servidor guarda: bcrypt(credencial) + sobre de la DEK + dek_salt + copias cifradas
+```
+
+Dos decisiones del lado de la app, sin cambiar el backend:
+
+1. **No se manda la contraseña**, sino una credencial derivada. Si el servidor tuviera la contraseña, con el `dek_salt` (que también guarda) podría derivar la KEK, abrir la DEK y leer los datos: dejaría de ser *zero-knowledge*. El login funciona igual.
+2. **`encrypted_dek` lleva el ciphertext y el tag de GCM juntos.** El backend no tiene un campo para el tag del sobre (solo `dek_iv`); sin el tag, otro celular no podría abrir la DEK. Así cabe en el contrato actual.
+
+**Sincronización** (`data/sync/Sincronizador.kt`): lee la copia completa (`Instantanea`), calcula su **huella** (SHA-256) y la compara con la de la última sincronización para saber si hay cambios locales. Hace `pull`; si el servidor tiene una versión que este celular no conoce y gana por la política de conflictos, restaura esa copia (en una transacción, todo o nada). Si no, y hay cambios, hace `push` con `version + 1`. El último cambio local se registra con el `InvalidationTracker` de Room.
+
+**Token**: el JWT dura 1 día y el backend no tiene renovación ni logout; mientras la sesión está abierta la app guarda **en memoria** la credencial derivada y, ante un 401, pide otro. Al cerrar sesión se borra el token del celular.
+
 ---
 
 ## 5. Estructura de carpetas y archivos
@@ -267,12 +334,14 @@ agendasalud/
 ├── MainActivity.kt              Activity de las 4 pestañas; pide login encima si la sesión se bloquea; cierra la base al salir
 │
 ├── di/
-│   └── ModuloApp.kt             Módulos de Hilt: seguridad, base, repositorios y casos de uso
+│   └── ModuloApp.kt             Módulos de Hilt: seguridad, base, red (Retrofit), repositorios y casos de uso
 │
 ├── core/
 │   ├── security/
 │   │   ├── Autenticador.kt      BiometricPrompt (huella/PIN del dispositivo)
 │   │   ├── CifradoRespaldo.kt   AES-256-GCM con clave derivada de la contraseña del respaldo (JVM puro)
+│   │   ├── CifradorKeystore.kt  Cifra secretos chicos (token, clave de datos) con Android Keystore
+│   │   ├── ClavesCuenta.kt      KEK, sobre de la DEK, credencial y cifrado de la copia (compatible con el backend)
 │   │   ├── PantallaSegura.kt    FLAG_SECURE en release (lo llaman las dos Activities)
 │   │   ├── ClaveBaseDatos.kt    Genera la clave de SQLCipher y la guarda cifrada con Android Keystore
 │   │   ├── Credenciales.kt      Usuario + hash PBKDF2 de la contraseña (archivo en noBackupFilesDir)
@@ -290,6 +359,7 @@ agendasalud/
 │   │   ├── CambioTurno.kt       Historial de reprogramaciones
 │   │   ├── ItemAgenda.kt        Fila de agenda: Ocupado / Libre / Bloqueado
 │   │   ├── Respaldo.kt          ResumenRespaldo (cuánto se guardó / restauró)
+│   │   ├── Sincronizacion.kt    EstadoSincronizacion (sealed)
 │   │   └── Resultado.kt         Resultado<T> y ErrorDominio (errores de negocio)
 │   ├── rules/
 │   │   ├── HorarioAtencion.kt   L-V 9 a 18, sáb 9 a 12, dom cerrado
@@ -297,7 +367,7 @@ agendasalud/
 │   │   ├── ReglasCobro.kt       Pendiente y validación de montos
 │   │   └── ArmadoAgenda.kt      Arma la lista del día (turnos + bloqueos + huecos libres)
 │   ├── repository/
-│   │   └── Repositorios.kt      Interfaces: Paciente, Turno, Bloqueo, Cobro, Preferencias, Respaldo
+│   │   └── Repositorios.kt      Interfaces: Paciente, Turno, Bloqueo, Cobro, Preferencias, Respaldo, Cuenta, Sincronizacion
 │   └── usecase/
 │       ├── ReservarTurno.kt     Valida paciente activo, duración e importe
 │       ├── CompletarSesion.kt   Completa y genera el cargo
@@ -312,8 +382,17 @@ agendasalud/
 │   │   ├── dao/Daos.kt          PacienteDao, TurnoDao, BloqueoDao, CobroDao (consultas SQL)
 │   │   ├── dao/RespaldoDao.kt   Leer todo / borrar todo / insertar todo (para el respaldo)
 │   │   └── entity/Entidades.kt  Tablas y filas de consulta (TurnoConNombre, CargoConCobrado, …)
+│   ├── remoto/
+│   │   ├── ApiAgendaSalud.kt    Interfaz Retrofit + DTOs (copia de schemas.py del backend)
+│   │   ├── AlmacenCuenta.kt     Token, clave de datos y estado de sincronización, cifrados con Keystore
+│   │   ├── ClienteHttp.kt       Interceptor que agrega el JWT
+│   │   └── CuentaRepositoryImpl.kt  Registro, login, recuperación de contraseña
+│   ├── sync/
+│   │   ├── Sincronizador.kt     Push / pull de la copia completa y conflictos
+│   │   └── TrabajoSincronizacion.kt  Worker, política del servidor (sync_config.json) y repositorio
 │   ├── respaldo/
-│   │   └── RespaldoJson.kt      Formato JSON del respaldo (independiente de las tablas) y sus mapeos
+│   │   ├── Instantanea.kt       Copia completa: leer, restaurar y huella (la usan respaldo y sincronización)
+│   │   └── RespaldoJson.kt      Formato JSON de la copia (independiente de las tablas) y sus mapeos
 │   └── repository/
 │       ├── Transaccion.kt       Helper: transacción + mapeo de errores a Resultado (RNF07)
 │       ├── PacienteRepositoryImpl.kt
@@ -336,6 +415,8 @@ agendasalud/
 │   ├── navegacion/
 │   │   ├── Rutas.kt             Rutas tipadas (kotlinx.serialization)
 │   │   └── AgendaSaludNavHost.kt  Barra inferior o lateral (responsive) + snackbar + NavHost + respaldo
+│   ├── sincronizacion/
+│   │   └── SincronizacionViewModel.kt  Programa la sincronización y arma el texto de estado del menú
 │   ├── respaldo/
 │   │   ├── RespaldoViewModel.kt   Pasos del respaldo (sealed PasoRespaldo)
 │   │   └── RespaldoDialogos.kt    Diálogos + selectores de archivo (SAF)
@@ -362,6 +443,8 @@ Otros archivos relevantes:
 |---|---|
 | `app/build.gradle.kts` | Plugins (Compose, KSP, serialization, Hilt), dependencias, `room.schemaLocation`, R8 en release |
 | `app/proguard-rules.pro` | Reglas de R8 propias (SQLCipher usa JNI) |
+| `app/src/main/res/xml/network_security_config.xml` | Release: solo HTTPS. `src/debug/…` permite HTTP a `10.0.2.2` (backend local) |
+| `../TPO1_backend/` | **Backend del equipo** (FastAPI + MongoDB, Vercel): ver su `README.md` y `PROPUESTA_ARQUITECTURA.md` |
 | `gradle/libs.versions.toml` | Catálogo de versiones de todas las dependencias |
 | `app/schemas/…/1.json` | Esquema exportado de Room v1 (base para migraciones futuras) |
 | `app/src/main/AndroidManifest.xml` | `AgendaSaludApp`, `allowBackup=false`, `AccesoActivity` (LAUNCHER, `singleTop`) y `MainActivity` (no exportada) |
@@ -463,17 +546,22 @@ Todas en `domain/rules/` (Kotlin puro, con tests).
 | Contraseña | Nunca se guarda: solo **hash PBKDF2-HMAC-SHA256** (120.000 iteraciones, salt aleatorio de 16 bytes), comparación en tiempo constante (`Credenciales`) |
 | Usuario | Uno por dispositivo; se normaliza (minúsculas, sin espacios) |
 | Bloqueo | Login al abrir; vuelve a pedirlo tras **2 minutos en segundo plano** (`SesionSeguridad` + `ProcessLifecycleOwner`) o al tocar **cerrar sesión** |
-| Cierre de sesión | Se destruye `MainActivity` (y sus ViewModels) y se **cierra la base**: la clave deja de estar en memoria. Los datos **no se borran** porque el celular es la única copia (local-first); para eso está el respaldo |
+| Cierre de sesión | Se destruye `MainActivity` (y sus ViewModels) y se **cierra la base**: la clave deja de estar en memoria. Además se cancela la sincronización y se borra el token del backend. Los datos locales **no se borran**: los cambios posteriores a la última sincronización se perderían |
+| Cuenta en el servidor | La contraseña **no se envía**: se manda una credencial derivada (PBKDF2) que el backend guarda con bcrypt |
+| Datos en el servidor | Copia **cifrada en el celular** con AES-256-GCM; la DEK viaja envuelta con una KEK que solo se obtiene con la contraseña. El servidor no puede leer pacientes |
+| Token | JWT del backend, guardado cifrado con Keystore; se borra al cerrar sesión |
+| Red | Solo HTTPS en release (`network_security_config`); permiso `INTERNET` y ninguno peligroso; sin logging de pedidos |
+| Enlace de recuperación | `agendasalud://reset-password`: un token de un solo uso que vence en 30 minutos |
 | Respaldo | Archivo cifrado con AES-256-GCM; la clave sale de una contraseña aparte (PBKDF2) para poder abrirlo en otro celular. El encabezado está autenticado: un archivo modificado se rechaza. Se elige con SAF: la app no pide permisos de almacenamiento. La contraseña se borra de memoria al terminar y nunca va al `SavedStateHandle` |
 | Huella / PIN | `BiometricPrompt` con `BIOMETRIC_WEAK or DEVICE_CREDENTIAL` como atajo de ingreso |
 | Capturas y recientes | `FLAG_SECURE` en **release** (oculta la app en recientes y bloquea capturas). En **debug** está desactivado para poder revisar pantallas |
 | Backups | `allowBackup=false` y reglas que excluyen todo de backup en la nube y transferencia entre dispositivos |
-| Permisos | Ninguno peligroso (sin contactos, cámara ni ubicación) |
+| Permisos | Solo `INTERNET` (sincronización). Ninguno peligroso (sin contactos, cámara ni ubicación) |
 | WhatsApp | Solo se abre con un borrador; nunca se envía automáticamente |
 | Navegación | Las rutas no llevan datos del paciente |
 | Falla de la clave | Si la base no abre, pantalla de error con *Reintentar* o *Empezar de cero* (borra base y clave, conserva el usuario). Nunca se muestran ni registran detalles técnicos que puedan incluir datos |
 
-> ⚠️ **Recuperación solo con respaldo**: si se pierde el celular, se desinstala la app o se borran sus datos, la información se recupera **únicamente** con un respaldo exportado antes. El backup automático de Google sigue desactivado a propósito: copiaría una base que en otro celular no se puede abrir (la clave está en el Keystore del celular original).
+> ⚠️ **Recuperación**: si se pierde el celular, se ingresa con la misma cuenta en otro y se descarga la última copia del servidor (lo cargado después de la última sincronización se pierde). Si además se **olvida la contraseña**, la copia del servidor no se puede descifrar, por diseño *zero-knowledge*. El backup automático de Google sigue desactivado a propósito: copiaría una base que en otro celular no se puede abrir (la clave está en el Keystore del celular original).
 
 ---
 
@@ -486,7 +574,8 @@ Todas en `domain/rules/` (Kotlin puro, con tests).
 | RF03 Bloqueo de agenda | ✅ | Diálogo Bloquear período. Probado: bloqueo 12–13 y rechazo sobre turno |
 | RF04 Cobros y saldos | ✅ | Probado en la app con el ejemplo exacto: $20.000 → cobro $8.000 → pendiente $12.000 → cobro $12.000 → saldado. Rechazo de $13.000 |
 | RF05 WhatsApp | ✅ | Borrador tras reprogramar; abre `wa.me` (probado: abre Chrome sin WhatsApp instalado) |
-| RNF01 Offline | ✅ | Todo es local; no hay llamadas de red |
+| RNF01 Offline | ✅ | Todo se lee y escribe en Room; la red solo se usa en segundo plano para sincronizar |
+| RF07 Cuenta y sincronización | 🟡 | Integrado con el backend del equipo. Cifrado compatible verificado contra `CryptoService` de Python. **Falta la prueba punta a punta** con el backend corriendo |
 | RNF02 Base cifrada + Keystore | ✅ | `AgendaDatabaseTest.archivoDeBaseEstaCifrado` |
 | RNF03 Privacidad | ✅ | Sin backups, sin logs de datos, sin permisos, `FLAG_SECURE` en release |
 | RNF04 Acceso | ✅ modificado | Usuario y contraseña propios + huella/PIN como atajo + bloqueo a los 2 min + cerrar sesión. Ver justificación en §12 |
@@ -507,6 +596,8 @@ Todas en `domain/rules/` (Kotlin puro, con tests).
 | `domain/rules/ReglasCobroTest` (5) | JVM | Ejemplo RF04 y validación de montos | idem |
 | `core/util/FormatosTest` (3) | JVM | Parseo de montos ("20.000", "20000,50"…) | idem |
 | `core/security/CredencialesTest` (2) | JVM | Crear y verificar usuario; contraseña nunca en texto plano | idem |
+| `core/security/ClavesCuentaTest` (5) | JVM | Recuperar la DEK con la misma contraseña, rechazo con otra, credencial ≠ contraseña, tag separado como espera el backend, datos modificados se rechazan | idem |
+| `core/security/CompatibilidadBackendTest` (2) | JVM | La app abre un sobre y una copia generados por `CryptoService` (Python) del backend | idem |
 | `core/security/CifradoRespaldoTest` (5) | JVM | Ida y vuelta con la misma contraseña, archivo sin datos en claro, rechazo con otra contraseña, archivo modificado o ajeno | idem |
 | `data/AgendaDatabaseTest` (3) | Instrumentado | Archivo cifrado, superposición en transacción, cobro RF04 y completar idempotente | `./gradlew :app:connectedDebugAndroidTest` |
 
@@ -535,6 +626,8 @@ Definidas en `gradle/libs.versions.toml`.
 | Biometric | 1.1.0 | Huella / PIN |
 | DataStore Preferences | 1.2.1 | Preferencias no sensibles |
 | Hilt (hilt-android, hilt-compiler) | 2.59.2 | Inyección de dependencias |
+| Retrofit + converter kotlinx-serialization | 3.0.0 | Cliente HTTP del backend |
+| WorkManager + androidx.hilt work | 2.12.0 / 1.3.0 | Sincronización en segundo plano con Hilt |
 | androidx.hilt lifecycle-viewmodel-compose | 1.3.0 | `hiltViewModel()` en Compose |
 | kotlinx-serialization-json | 1.9.0 | Rutas de navegación y formato del respaldo |
 | JUnit 4 / coroutines-test | 4.13.2 / 1.10.2 | Tests |
@@ -601,7 +694,18 @@ La consigna pide que toda modificación significativa pueda **explicarse y justi
 - **Ahora:** `AccesoActivity` (login, registro y apertura de la base) y `MainActivity` (las 4 pestañas). Ver la tabla de situaciones en §3.8.
 - **Por qué:** separar responsabilidades, que cerrar sesión destruya todo lo que tiene datos de pacientes en memoria, y que un bloqueo por inactividad no le haga perder al usuario la pantalla en la que estaba.
 
-### 12.8 Otros
+### 12.8 Integración con el backend del equipo
+
+- **Antes:** "No hay servidor ni base remota de AgendaSalud".
+- **Ahora:** la app usa el backend de Francisco (`TPO1_backend/`, FastAPI + MongoDB en Vercel) para la cuenta, la copia cifrada de los datos y la recuperación de contraseña. Sigue siendo **offline-first**.
+- **Por qué:** recuperar los datos si se pierde o roban el celular, como plantea la preentrega para la versión con backend, y lo que pide la teoría de persistencia (Room como fuente de verdad con un backend que sincroniza).
+- **Cambios del lado de la app respecto del ejemplo `test_e2e_local.py`:** se manda una credencial derivada en vez de la contraseña, y el tag del sobre de la DEK va dentro de `encrypted_dek` (ver §4.1). **Hay que acordarlo con Francisco** y actualizar ese script.
+- **Texto sugerido** (topología y RF07):
+  > **Topología.** La aplicación guarda los datos en una base cifrada en el teléfono y funciona sin conexión. Un backend propio (API REST FastAPI con JWT, desplegado en Vercel con MongoDB Atlas) almacena las cuentas y una copia cifrada de los datos. Los datos se cifran en el teléfono antes de enviarse: el servidor no puede leerlos.
+  >
+  > **RF07 Cuenta y sincronización.** El profesional crea una cuenta con su email que le permite recuperar sus datos en otro dispositivo. La app sincroniza una copia cifrada según la política definida en el servidor; sin conexión sigue funcionando. Si la contraseña se olvida, puede restablecerse por email.
+
+### 12.9 Otros
 
 | Tema | Detalle |
 |---|---|
@@ -622,6 +726,10 @@ Cosas **no probadas todavía** o que conviene revisar antes de la entrega:
 - [ ] **Huella / PIN**: no se pudo probar en el emulador (no tenía bloqueo configurado).
 - [ ] **Bloqueo a los 2 minutos**: dejar la app en segundo plano > 2 min y verificar que pide login.
 - [ ] **Release con R8**: el APK release compila con R8 activado; falta **instalarlo y recorrer la app** (si R8 quitara algo que se usa por reflexión, fallaría recién al ejecutar). Verificar también `FLAG_SECURE` (pantalla en negro en recientes). Para instalarlo hay que firmarlo (Android Studio → *Generate Signed APK*).
+- [ ] **Sincronización punta a punta** (lo más importante): `docker compose up -d` en `TPO1_backend`, registrarse en el emulador, cargar datos, *Sincronizar ahora*. Después borrar los datos de la app, **Ingresar** con la misma cuenta y verificar que aparece todo.
+- [ ] **Recuperación de contraseña**: configurar SMTP en el backend (o leer el enlace en el log del backend), abrirlo con `adb shell am start -d "agendasalud://reset-password?token=…"` y cambiar la contraseña con y sin los datos en el celular.
+- [ ] **Calendario**: cambiar `interval_minutes` en `sync_config.json` y verificar que la app lo toma al volver a abrirse.
+- [ ] **Acordar con Francisco**: credencial derivada en vez de contraseña, tag del sobre dentro de `encrypted_dek`, URL de Vercel para release.
 - [ ] **Respaldo**: exportar a Drive y a Descargas, restaurar en un emulador limpio, probar contraseña incorrecta y un archivo que no es respaldo.
 - [ ] **Dos Activities**: cerrar sesión, Atrás desde Hoy y desde el login pedido encima, bloqueo a los 2 min (debe volver a la misma pestaña), y "Opciones de desarrollador → No conservar actividades" para simular la muerte del proceso.
 - [ ] **Rotación**: girar con cada diálogo abierto y a medio completar (debe conservar lo escrito, salvo contraseñas).
@@ -645,7 +753,7 @@ Cosas **no probadas todavía** o que conviene revisar antes de la entrega:
 
 1. **Horario de atención configurable** (hoy está fijo en `HorarioAtencion`): pantalla de ajustes usando el `PreferenciasRepository` que ya existe.
 2. **Duración de los huecos** según la duración predeterminada (hoy son de 60 min fijos en `ArmadoAgenda.armar`).
-3. **Recuperación de contraseña**: hoy, si el profesional la olvida, solo puede borrar los datos de la app. Opciones: pregunta de seguridad, o permitir reset usando la huella/PIN del celular.
+3. **Clave de recuperación**: al registrarse, mostrar un código para anotar que también envuelva la DEK. Con él se recuperan los datos del servidor aunque se olvide la contraseña y no se tenga el celular anterior.
 4. **Cambiar contraseña** desde la app.
 5. **Recordatorio de respaldo**: avisar si pasaron más de 7 días desde el último (guardar la fecha en DataStore). Más adelante, respaldo automático programado con WorkManager a una carpeta elegida una vez.
 6. **Vista semanal o mensual** de la agenda.
@@ -664,7 +772,9 @@ Cosas **no probadas todavía** o que conviene revisar antes de la entrega:
 5. **Migraciones de Room**: el esquema v1 está exportado en `app/schemas/`; cualquier cambio de tablas necesita una migración.
 6. **Bloquear la clave de la base a la autenticación** (`setUserAuthenticationRequired`) para que la base no pueda abrirse sin login.
 7. **Limitar intentos de login** (demora creciente tras varios errores).
-8. **Tests de Hilt** (`@HiltAndroidTest`) reemplazando los repositorios por falsos.
+8. **Tests de Hilt** (`@HiltAndroidTest`) reemplazando los repositorios por falsos, y del `Sincronizador` con `MockWebServer`.
+13. **Para el backend** (sugerencias a Francisco): endpoint de logout o lista de tokens revocados; token de renovación; un campo `dek_tag`; rate limit en login; App Links (https) en vez de `agendasalud://` para el mail, que otra app podría interceptar.
+14. **Sincronización por registro** en vez de copia completa, si se quiere usar dos celulares a la vez sin que uno pise al otro.
 9. **CI en GitHub Actions**: compilar + tests + lint en cada PR.
 10. **Strings**: algunos textos del borrador de WhatsApp están en el ViewModel; moverlos a `strings.xml`.
 11. **Dividir `Daos.kt` y `Entidades.kt`** en un archivo por clase si crecen.
@@ -723,8 +833,11 @@ Cada tema de los apuntes y dónde se aplica, para la defensa.
 | **DataStore** en lugar de SharedPreferences | `PreferenciasRepositoryImpl` (duración e importe sugeridos), con corrutinas y `Flow` |
 | **Almacenamiento interno privado** | `noBackupFilesDir`: credenciales y clave de la base. Nunca almacenamiento externo |
 | **SAF para archivos compartibles** | El respaldo usa `CreateDocument` / `OpenDocument`: elige el usuario, sin permisos de almacenamiento |
-| **Política de cierre de sesión** | Se destruye `MainActivity` y se **cierra la base** (`BaseDatosCifrada.cerrar`). La clave sigue protegida por el Keystore. No hay tokens (sin servidor). Los datos **no se purgan** a propósito: en local-first el celular es la única copia |
-| **SSOT** | Room es la única fuente de verdad: las pantallas observan `Flow` de Room y se actualizan solas |
+| **Política de cierre de sesión** | Se destruye `MainActivity` y se **cierra la base** (`BaseDatosCifrada.cerrar`). Se borra el JWT y la credencial en memoria, y se cancela la sincronización. Los datos locales **no se purgan** a propósito: lo cargado después de la última sincronización solo está en el celular |
+| **SSOT + Offline-First** | Room es la única fuente de verdad; el backend se sincroniza en segundo plano (`Sincronizador`) sin que ninguna pantalla espere a la red |
+| **Retrofit** | `data/remoto/ApiAgendaSalud.kt` con funciones `suspend`, OkHttp con `Interceptor` para el JWT |
+| **Trabajo en segundo plano** | WorkManager (`@HiltWorker`) con la política del servidor: intervalo, red sin costo, batería no baja, reintentos y franja horaria |
+| **Invalidación de tokens al cerrar sesión** | Se borra el JWT del celular y la credencial en memoria. El backend no tiene endpoint de logout (sugerencia en §14) |
 | **SQL injection** | Todas las consultas usan parámetros (`:busqueda`, `:desde`…), nunca concatenación |
 | **DAO `suspend` / `Flow`** | Escrituras y lecturas puntuales `suspend`; observación con `Flow` |
 | **Filtrar en SQL** | `WHERE`, `ORDER BY` y `GROUP BY` (saldos) en la consulta, no en memoria |
