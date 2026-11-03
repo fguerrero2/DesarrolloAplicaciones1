@@ -1,6 +1,6 @@
 # AgendaSalud — Documentación de la implementación
 
-> Estado del código en la rama `feature/federico` (octubre 2026).
+> Estado del código en la rama `feature/federico` (noviembre 2026).
 > Este documento explica **qué hay**, **dónde está**, **cómo funciona** y **qué falta revisar**.
 > Complementa la preentrega (`docs/Desarrollo de Aplicaciones I-VI-NOCHE-TPO-Grupo nn Preentrega.md`).
 
@@ -23,6 +23,7 @@
 13. [Verificaciones pendientes](#13-verificaciones-pendientes)
 14. [Sugerencias de mejora](#14-sugerencias-de-mejora)
 15. [Guía rápida para el equipo](#15-guía-rápida-para-el-equipo)
+16. [Teoría de la cursada aplicada al proyecto](#16-teoría-de-la-cursada-aplicada-al-proyecto)
 
 ---
 
@@ -40,8 +41,9 @@ App Android nativa (Kotlin + Jetpack Compose) para que un profesional independie
 | Pacientes | Buscar, ver saldo, alta, edición, ficha con historial y cancelaciones del año, desactivar y reactivar |
 | Cobros | Lista de cargos pendientes o todos, total pendiente, registrar cobros totales o parciales (efectivo / Mercado Pago) |
 | WhatsApp | Tras reprogramar, borrador editable para avisar al paciente: abrir WhatsApp o copiar el texto |
+| Respaldo | Exportar un archivo cifrado con contraseña propia (a Drive, mail, pendrive) y restaurarlo en otro celular |
 
-**Decisión de diseño principal:** son **5 pantallas** (Login + 4 pestañas). Todas las acciones (nuevo turno, cobro, reprogramar, ficha, etc.) se resuelven con **diálogos y paneles inferiores** dentro de esas pantallas, sin navegar a pantallas nuevas.
+**Decisión de diseño principal:** son **5 pantallas** (Login + 4 pestañas) en **2 Activities**: `AccesoActivity` (login y apertura de la base) y `MainActivity` (las 4 pestañas). Todas las acciones (nuevo turno, cobro, reprogramar, ficha, respaldo, etc.) se resuelven con **diálogos y paneles inferiores** dentro de esas pantallas, sin navegar a pantallas nuevas.
 
 ---
 
@@ -66,6 +68,7 @@ cd TPO1_app
 export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
 
 ./gradlew :app:assembleDebug            # genera app/build/outputs/apk/debug/app-debug.apk
+./gradlew :app:assembleRelease          # versión release con R8 (sin firmar): app/build/outputs/apk/release/
 ./gradlew :app:testDebugUnitTest        # tests de reglas (sin Android, segundos)
 ./gradlew :app:lintDebug                # análisis estático
 ./gradlew :app:connectedDebugAndroidTest  # tests de base cifrada (requiere emulador o celular)
@@ -100,7 +103,8 @@ Capturas tomadas del emulador durante la prueba manual (`docs/capturas/`).
 - El botón **Registrarse** aparece **solo si todavía no hay usuario** en el celular (un único profesional por dispositivo).
 - Si hay huella o PIN configurado en el celular, aparece **"Ingresar con huella o PIN"** como atajo. Si la huella falla se muestra el motivo; si el usuario cancela, no.
 - Después del login se **abre la base cifrada** ("Abriendo tus datos…"). Si no se puede abrir (por ejemplo, Android invalidó la clave del Keystore al quitar el bloqueo de pantalla), en vez de cerrarse la app muestra **"No se pudieron abrir tus datos"** con *Reintentar*, *Empezar de cero* (borra todo, con confirmación) y *Cerrar sesión*.
-- Archivos: `presentation/acceso/LoginScreen.kt`, `LoginViewModel.kt`, `AperturaBaseScreen.kt`, `core/security/Credenciales.kt`.
+- Todo esto vive en **`AccesoActivity`**. Cuando la base está lista abre `MainActivity` y se cierra, así *Atrás* desde la app no vuelve al login.
+- Archivos: `presentation/acceso/AccesoActivity.kt`, `AccesoViewModel.kt`, `LoginScreen.kt`, `LoginViewModel.kt`, `AperturaBaseScreen.kt`, `core/security/Credenciales.kt`.
 
 ### 3.2 Hoy (wireframe 02)
 
@@ -115,7 +119,8 @@ Capturas tomadas del emulador durante la prueba manual (`docs/capturas/`).
 - **Tocar un turno** → panel con: Completar sesión, Reprogramar, Cancelar turno (si está programado) o Registrar cobro (si está completado).
 - **Completar sesión** abre directamente *Registrar cobro* (flujo "Cobrar" de la preentrega).
 - Botón **+ Nuevo turno** siempre visible abajo.
-- Ícono **cerrar sesión** arriba a la derecha (en las 4 pestañas).
+- Menú **⋮** arriba a la derecha (en las 4 pestañas): *Exportar respaldo*, *Restaurar respaldo* y *Cerrar sesión*.
+- Si la app quedó abierta de un día para otro, al volver a la pantalla salta sola al día actual y deja de ofrecer los huecos que ya pasaron.
 - Archivos: `presentation/turnos/AgendaDia.kt` (`HoyScreen`), `AgendaDiaViewModel.kt`, `TurnoDialogos.kt`.
 
 ### 3.3 Registrar cobro (wireframes 13–16)
@@ -135,18 +140,18 @@ Capturas tomadas del emulador durante la prueba manual (`docs/capturas/`).
 |---|---|
 | ![](docs/capturas/07-agenda-con-bloqueo.png) | ![](docs/capturas/08-borrador-whatsapp.png) |
 
-- Igual que Hoy, más: flechas **día anterior / siguiente** y botón de fecha (calendario).
+- Igual que Hoy, más: flechas **día anterior / siguiente**, botón de fecha (calendario) y **Hoy** (aparece si se está mirando otro día).
 - **Bloquear período**: desde (fecha + hora), hasta (fecha + hora) y motivo. No se puede bloquear encima de turnos programados ("Hay turnos programados en ese período…").
 - Tocar un bloqueo → confirmar para **quitarlo**.
 - **Reprogramar** → nueva fecha y hora → se guarda → aparece el **borrador de WhatsApp** (editable) con *Copiar texto*, *Abrir WhatsApp* y *Ahora no*. Nunca se envía solo.
-- Domingos: "No hay atención este día".
+- Domingos: "No hay atención este día". En los calendarios de *Nuevo turno* y *Reprogramar* los domingos están deshabilitados.
 - Archivos: `presentation/turnos/AgendaDia.kt` (`AgendaScreen`), `presentation/disponibilidad/BloquearPeriodoDialog.kt`, `TurnoDialogos.kt` (`WhatsAppDialog`).
 
 ### 3.5 Pacientes (wireframes 04–07, 30–31)
 
 ![](docs/capturas/10-ficha-paciente.png)
 
-- Buscador por nombre, filtro **Ver inactivos**, saldo pendiente por paciente.
+- Buscador por nombre (consulta a la base 300 ms después de dejar de escribir), filtro **Ver inactivos**, saldo pendiente por paciente.
 - **+ Nuevo paciente**: nombre (obligatorio) y teléfono (opcional, se usa para WhatsApp).
 - Tocar un paciente → **ficha** (panel inferior): teléfono, saldo, cancelaciones del año, últimos 20 turnos, *Editar*, *Desactivar* (con confirmación) o *Reactivar*.
 - Un paciente desactivado conserva su historial y no aparece para nuevos turnos.
@@ -161,12 +166,23 @@ Capturas tomadas del emulador durante la prueba manual (`docs/capturas/`).
 - Nota: "Saldo calculado a partir de cargos y cobros. No se edita manualmente."
 - Archivos: `presentation/pagos/CobrosScreen.kt`, `CobrosViewModel.kt`.
 
-### 3.7 Mapa de navegación
+### 3.7 Respaldo (menú ⋮)
+
+- **Exportar respaldo**: se elige una contraseña del respaldo (dos veces) → el selector de Android pide dónde guardar (`agendasalud-AAAA-MM-DD.respaldo`; puede ser Google Drive) → "Respaldo guardado: N pacientes, N turnos y N cobros".
+- **Restaurar respaldo**: advertencia (*reemplaza todos los datos*) → elegir el archivo → contraseña → "Datos restaurados…". Si la contraseña es incorrecta, el diálogo queda abierto con el error.
+- **Celular nuevo o robado**: instalar la app, **Registrarse** (la pantalla de registro lo recuerda) y desde el menú ⋮ **Restaurar respaldo**.
+- El archivo está cifrado con **AES-256-GCM** y una clave derivada de la contraseña del respaldo (PBKDF2, 120.000 iteraciones). Google Drive solo ve bytes ilegibles. **Si se olvida esa contraseña, el respaldo no se puede abrir.**
+- Archivos: `presentation/respaldo/RespaldoDialogos.kt`, `RespaldoViewModel.kt`, `data/repository/RespaldoRepositoryImpl.kt`, `data/respaldo/RespaldoJson.kt`, `data/local/dao/RespaldoDao.kt`, `core/security/CifradoRespaldo.kt`.
+
+### 3.8 Mapa de navegación
 
 ```mermaid
 flowchart TD
-    L[Login / Registro] -->|usuario y contraseña<br/>o huella/PIN| N
-    subgraph N[Barra inferior]
+    subgraph AA[AccesoActivity]
+        L[Login / Registro] --> AB[Abriendo datos / Error]
+    end
+    AB -->|base lista| N
+    subgraph N[MainActivity · barra inferior o lateral]
         H[Hoy]
         A[Agenda]
         P[Pacientes]
@@ -181,10 +197,28 @@ flowchart TD
     P -->|tocar paciente| FP[Panel ficha] --> EP[Editar / Desactivar]
     P -->|+ Nuevo paciente| NP[Diálogo paciente]
     C -->|Registrar cobro| RC
-    N -->|ícono cerrar sesión<br/>o 2 min en segundo plano| L
+    N -->|menú ⋮| RS[Exportar / Restaurar respaldo]
+    N -->|Cerrar sesión: se cierra MainActivity y la base| L
+    N -.->|2 min en segundo plano o proceso muerto:<br/>login ENCIMA, al volver sigue donde estaba| L
 ```
 
-Rutas de Navigation Compose (tipadas, en `presentation/navegacion/Rutas.kt`): `RutaHoy`, `RutaAgenda`, `RutaPacientes`, `RutaCobros`. El Login no es una ruta: `MainActivity` muestra `LoginScreen` o el `NavHost` según `SesionSeguridad.desbloqueada`.
+Rutas de Navigation Compose (tipadas, en `presentation/navegacion/Rutas.kt`): `RutaHoy`, `RutaAgenda`, `RutaPacientes`, `RutaCobros`. El Login no es una ruta: es otra Activity.
+
+**Por qué 2 Activities y no 1 ni 5:**
+
+- **Acceso** y **app** son responsabilidades distintas: una Activity no debería decidir a la vez si hay sesión, si la base abrió y qué pestaña mostrar.
+- Al cerrar sesión se **destruye `MainActivity`** con todos sus ViewModels y se cierra la base: no queda nada de los pacientes en memoria.
+- Si la sesión se bloquea (2 min) o Android mata el proceso, `MainActivity` pide el login **encima de sí misma** (`AccesoActivity.pedirLogin`). Después del login el usuario vuelve a la misma pestaña, el mismo día y la misma búsqueda.
+- Las 4 pestañas **no** son Activities separadas: compartir la barra de navegación entre Activities obliga a recrearla en cada cambio (transiciones bruscas) y a pasar estado entre ellas. Google recomienda una Activity con Navigation Compose para eso.
+
+| Situación | Qué pasa |
+|---|---|
+| Abrir la app | `AccesoActivity` (LAUNCHER) → login → abre la base → `MainActivity` → `finish()` del acceso |
+| Atrás desde Hoy | Sale de la app; `MainActivity.onDestroy` cierra la base |
+| Cerrar sesión | `FLAG_ACTIVITY_CLEAR_TASK`: queda solo `AccesoActivity`; la base se cierra |
+| 2 min en segundo plano | Al volver, `MainActivity` (en `onStart`) ve la sesión bloqueada y abre `AccesoActivity` encima; tras el login, `finish()` y sigue donde estaba |
+| Android mató el proceso | Se recrea `MainActivity` con su estado guardado, sin base abierta: muestra solo el fondo y pide el login encima; al volver, las pantallas recuperan el día, la búsqueda y los filtros (`SavedStateHandle`) |
+| Atrás en el login pedido encima | `finishAffinity()`: sale de la app sin mostrar los datos |
 
 ---
 
@@ -215,9 +249,11 @@ flowchart LR
 - **El dominio no depende de Android ni de Compose**: las reglas se prueban con JUnit puro.
 - **Lecturas**: Room → `Flow` → ViewModel (`combine`, `stateIn`) → `UiState` → Compose. Los cambios en la base se reflejan solos en todas las pantallas.
 - **Escrituras**: ViewModel → caso de uso / repositorio → **transacción** (`AgendaDatabase.transaccion`) → `Resultado.Exito` o `Resultado.Fallo(ErrorDominio)`. El aviso de éxito (snackbar) solo se muestra **después** de una escritura confirmada.
-- **Inyección de dependencias manual**: `AppContainer` (creado en `AgendaSaludApp`). Los ViewModels se crean con `fabricaViewModel { contenedor -> ... }` (`presentation/comun/ViewModels.kt`). No se usa Hilt para mantenerlo simple.
-- **La base se abre explícitamente después del login** (`AppContainer.abrirBase`), con estados `Cerrada → Abriendo → Lista | Error`. Se fuerza una primera lectura para detectar una clave inválida antes de mostrar las pantallas.
-- **Errores de lectura**: si una consulta falla con la app abierta, el ViewModel muestra un aviso ("No se pudieron leer los datos…") en vez de cerrarse (`ViewModelConAvisos.avisarSiFalla`).
+- **Estado de pantalla sellado**: cada pantalla expone `StateFlow<EstadoUi<Datos>>` con `Cargando`, `Error` o `Contenido(datos)` (`presentation/comun/EstadoUi.kt`). El `when` de la pantalla tiene que contemplar los tres casos y el compilador avisa si falta uno. Un error de lectura muestra "No se pudieron leer los datos" con **Reintentar**, nunca una lista vacía.
+- **Estado vs. eventos**: el estado va en `StateFlow`; los avisos de una sola vez (snackbar) y los pedidos de abrir el selector de archivos van por un `Channel`, que se consume una sola vez y no se repite al rotar.
+- **Inyección de dependencias con Hilt** (`di/ModuloApp.kt`): `@HiltAndroidApp` en la Application, `@AndroidEntryPoint` en las Activities, `@HiltViewModel` + `@Inject constructor` en los ViewModels y `hiltViewModel()` en las pantallas, que ata cada ViewModel a la entrada de navegación de su pestaña. La capa `domain` no tiene anotaciones de Hilt: los casos de uso se crean en el módulo.
+- **La base se abre explícitamente después del login** (`BaseDatosCifrada.abrir`, un `@Singleton`), con estados `Cerrada → Abriendo → Lista | Error`, y se cierra al cerrar sesión. La base **no** es singleton en Hilt: cada repositorio la pide al crearse, así después de un nuevo login los ViewModels nuevos reciben la base recién abierta.
+- **Errores de lectura**: si una consulta falla con la app abierta, la pantalla pasa a `EstadoUi.Error` en vez de cerrarse.
 
 ---
 
@@ -227,13 +263,17 @@ Raíz del módulo: `TPO1_app/app/src/main/java/ar/edu/fguerrero/da1/agendasalud/
 
 ```
 agendasalud/
-├── AgendaSaludApp.kt            Application: crea el AppContainer y registra el bloqueo por inactividad
-├── AppContainer.kt              Inyección de dependencias manual; abre la base (EstadoBase) y "empezar de cero"
-├── MainActivity.kt              Única Activity: Login → apertura de base → NavHost; FLAG_SECURE en release
+├── AgendaSaludApp.kt            Application @HiltAndroidApp; registra el bloqueo por inactividad
+├── MainActivity.kt              Activity de las 4 pestañas; pide login encima si la sesión se bloquea; cierra la base al salir
+│
+├── di/
+│   └── ModuloApp.kt             Módulos de Hilt: seguridad, base, repositorios y casos de uso
 │
 ├── core/
 │   ├── security/
 │   │   ├── Autenticador.kt      BiometricPrompt (huella/PIN del dispositivo)
+│   │   ├── CifradoRespaldo.kt   AES-256-GCM con clave derivada de la contraseña del respaldo (JVM puro)
+│   │   ├── PantallaSegura.kt    FLAG_SECURE en release (lo llaman las dos Activities)
 │   │   ├── ClaveBaseDatos.kt    Genera la clave de SQLCipher y la guarda cifrada con Android Keystore
 │   │   ├── Credenciales.kt      Usuario + hash PBKDF2 de la contraseña (archivo en noBackupFilesDir)
 │   │   └── SesionSeguridad.kt   Estado desbloqueada/bloqueada, bloqueo a los 2 min, cerrar sesión
@@ -249,6 +289,7 @@ agendasalud/
 │   │   ├── Cobro.kt             CargoSesion, Cobro, MedioCobro, CargoPendiente
 │   │   ├── CambioTurno.kt       Historial de reprogramaciones
 │   │   ├── ItemAgenda.kt        Fila de agenda: Ocupado / Libre / Bloqueado
+│   │   ├── Respaldo.kt          ResumenRespaldo (cuánto se guardó / restauró)
 │   │   └── Resultado.kt         Resultado<T> y ErrorDominio (errores de negocio)
 │   ├── rules/
 │   │   ├── HorarioAtencion.kt   L-V 9 a 18, sáb 9 a 12, dom cerrado
@@ -256,7 +297,7 @@ agendasalud/
 │   │   ├── ReglasCobro.kt       Pendiente y validación de montos
 │   │   └── ArmadoAgenda.kt      Arma la lista del día (turnos + bloqueos + huecos libres)
 │   ├── repository/
-│   │   └── Repositorios.kt      Interfaces: Paciente, Turno, Bloqueo, Cobro, Preferencias
+│   │   └── Repositorios.kt      Interfaces: Paciente, Turno, Bloqueo, Cobro, Preferencias, Respaldo
 │   └── usecase/
 │       ├── ReservarTurno.kt     Valida paciente activo, duración e importe
 │       ├── CompletarSesion.kt   Completa y genera el cargo
@@ -265,27 +306,39 @@ agendasalud/
 ├── data/
 │   ├── local/
 │   │   ├── AgendaDatabase.kt    @Database Room v1 + apertura con SQLCipher
+│   │   ├── BaseDatosCifrada.kt  @Singleton: abre, cierra y "empieza de cero" la base (EstadoBase)
 │   │   ├── Converters.kt        LocalDateTime/LocalDate ↔ Long
 │   │   ├── Mapeos.kt            Entidad ↔ modelo de dominio
 │   │   ├── dao/Daos.kt          PacienteDao, TurnoDao, BloqueoDao, CobroDao (consultas SQL)
+│   │   ├── dao/RespaldoDao.kt   Leer todo / borrar todo / insertar todo (para el respaldo)
 │   │   └── entity/Entidades.kt  Tablas y filas de consulta (TurnoConNombre, CargoConCobrado, …)
+│   ├── respaldo/
+│   │   └── RespaldoJson.kt      Formato JSON del respaldo (independiente de las tablas) y sus mapeos
 │   └── repository/
 │       ├── Transaccion.kt       Helper: transacción + mapeo de errores a Resultado (RNF07)
 │       ├── PacienteRepositoryImpl.kt
 │       ├── TurnoRepositoryImpl.kt     reservar / reprogramar / cancelar / completar
 │       ├── BloqueoRepositoryImpl.kt
 │       ├── CobroRepositoryImpl.kt     registrar cobro, pendientes, saldos
-│       └── PreferenciasRepositoryImpl.kt  DataStore: duración e importe sugeridos
+│       ├── PreferenciasRepositoryImpl.kt  DataStore: duración e importe sugeridos
+│       └── RespaldoRepositoryImpl.kt      Exportar / restaurar con Storage Access Framework
 │
 ├── presentation/
-│   ├── acceso/                  Login, registro y pantallas de apertura / error de la base
+│   ├── acceso/
+│   │   ├── AccesoActivity.kt    Activity LAUNCHER: login → abrir base → MainActivity
+│   │   ├── AccesoViewModel.kt   Abre la base al desbloquear; reintentar / empezar de cero
+│   │   ├── LoginScreen.kt, LoginViewModel.kt
+│   │   └── AperturaBaseScreen.kt  "Abriendo tus datos…" y "No se pudieron abrir tus datos"
 │   ├── comun/
-│   │   ├── Avisos.kt            Snackbar de avisos, ViewModelConAvisos, textos de ErrorDominio
-│   │   ├── Componentes.kt       Encabezado, BotonAncho, TarjetaTexto, CampoFecha, CampoHora, SelectorPaciente
-│   │   └── ViewModels.kt        fabricaViewModel { AppContainer -> VM }
+│   │   ├── Avisos.kt            Snackbar de avisos, ViewModelConAvisos (estadoUi, reintentar), textos de ErrorDominio
+│   │   ├── EstadoUi.kt          sealed interface Cargando / Error / Contenido
+│   │   └── Componentes.kt       Encabezado + menú ⋮, BotonAncho, TarjetaTexto, CampoFecha, CampoHora, SelectorPaciente, IndicadorCarga, ErrorCarga
 │   ├── navegacion/
 │   │   ├── Rutas.kt             Rutas tipadas (kotlinx.serialization)
-│   │   └── AgendaSaludNavHost.kt  Scaffold + barra inferior + snackbar + NavHost
+│   │   └── AgendaSaludNavHost.kt  Barra inferior o lateral (responsive) + snackbar + NavHost + respaldo
+│   ├── respaldo/
+│   │   ├── RespaldoViewModel.kt   Pasos del respaldo (sealed PasoRespaldo)
+│   │   └── RespaldoDialogos.kt    Diálogos + selectores de archivo (SAF)
 │   ├── turnos/
 │   │   ├── AgendaDia.kt         HoyScreen y AgendaScreen (comparten contenido)
 │   │   ├── AgendaDiaViewModel.kt
@@ -300,17 +353,18 @@ agendasalud/
 │       ├── CobrosViewModel.kt
 │       └── RegistrarCobroDialog.kt
 │
-└── ui/theme/                    Tema Material 3 (plantilla de Android Studio)
+└── ui/theme/                    Tema Material 3 con paleta propia (Color.kt, Theme.kt)
 ```
 
 Otros archivos relevantes:
 
 | Ruta (desde `TPO1_app/`) | Contenido |
 |---|---|
-| `app/build.gradle.kts` | Plugins (Compose, KSP, serialization), dependencias, `room.schemaLocation` |
+| `app/build.gradle.kts` | Plugins (Compose, KSP, serialization, Hilt), dependencias, `room.schemaLocation`, R8 en release |
+| `app/proguard-rules.pro` | Reglas de R8 propias (SQLCipher usa JNI) |
 | `gradle/libs.versions.toml` | Catálogo de versiones de todas las dependencias |
 | `app/schemas/…/1.json` | Esquema exportado de Room v1 (base para migraciones futuras) |
-| `app/src/main/AndroidManifest.xml` | `AgendaSaludApp`, `allowBackup=false` |
+| `app/src/main/AndroidManifest.xml` | `AgendaSaludApp`, `allowBackup=false`, `AccesoActivity` (LAUNCHER, `singleTop`) y `MainActivity` (no exportada) |
 | `app/src/main/res/values/strings.xml` | **Todos los textos de la app** (en español), agrupados por pantalla |
 | `app/src/main/res/xml/backup_rules.xml`, `data_extraction_rules.xml` | Excluyen todo de backups y transferencias (RNF03) |
 | `app/src/main/res/drawable/ic_hoy.xml`, `ic_agenda.xml`, `ic_pacientes.xml`, `ic_cobros.xml` | Íconos de la barra inferior (vectores Material) |
@@ -409,6 +463,8 @@ Todas en `domain/rules/` (Kotlin puro, con tests).
 | Contraseña | Nunca se guarda: solo **hash PBKDF2-HMAC-SHA256** (120.000 iteraciones, salt aleatorio de 16 bytes), comparación en tiempo constante (`Credenciales`) |
 | Usuario | Uno por dispositivo; se normaliza (minúsculas, sin espacios) |
 | Bloqueo | Login al abrir; vuelve a pedirlo tras **2 minutos en segundo plano** (`SesionSeguridad` + `ProcessLifecycleOwner`) o al tocar **cerrar sesión** |
+| Cierre de sesión | Se destruye `MainActivity` (y sus ViewModels) y se **cierra la base**: la clave deja de estar en memoria. Los datos **no se borran** porque el celular es la única copia (local-first); para eso está el respaldo |
+| Respaldo | Archivo cifrado con AES-256-GCM; la clave sale de una contraseña aparte (PBKDF2) para poder abrirlo en otro celular. El encabezado está autenticado: un archivo modificado se rechaza. Se elige con SAF: la app no pide permisos de almacenamiento. La contraseña se borra de memoria al terminar y nunca va al `SavedStateHandle` |
 | Huella / PIN | `BiometricPrompt` con `BIOMETRIC_WEAK or DEVICE_CREDENTIAL` como atajo de ingreso |
 | Capturas y recientes | `FLAG_SECURE` en **release** (oculta la app en recientes y bloquea capturas). En **debug** está desactivado para poder revisar pantallas |
 | Backups | `allowBackup=false` y reglas que excluyen todo de backup en la nube y transferencia entre dispositivos |
@@ -417,7 +473,7 @@ Todas en `domain/rules/` (Kotlin puro, con tests).
 | Navegación | Las rutas no llevan datos del paciente |
 | Falla de la clave | Si la base no abre, pantalla de error con *Reintentar* o *Empezar de cero* (borra base y clave, conserva el usuario). Nunca se muestran ni registran detalles técnicos que puedan incluir datos |
 
-> ⚠️ **Sin recuperación**: si se pierde el celular, se desinstala la app o se borran sus datos, la información **no se puede recuperar** (no hay backup ni servidor). Está declarado en la preentrega, pero conviene recordarlo al usuario (ver sugerencias).
+> ⚠️ **Recuperación solo con respaldo**: si se pierde el celular, se desinstala la app o se borran sus datos, la información se recupera **únicamente** con un respaldo exportado antes. El backup automático de Google sigue desactivado a propósito: copiaría una base que en otro celular no se puede abrir (la clave está en el Keystore del celular original).
 
 ---
 
@@ -436,7 +492,7 @@ Todas en `domain/rules/` (Kotlin puro, con tests).
 | RNF04 Acceso | ✅ modificado | Usuario y contraseña propios + huella/PIN como atajo + bloqueo a los 2 min + cerrar sesión. Ver justificación en §12 |
 | RNF05 Accesibilidad | 🟡 parcial | Botones ≥ 48 dp, estados con texto, `contentDescription` en íconos, encabezados semánticos. **Falta probar TalkBack y texto al 200 %** |
 | RNF06 Rendimiento | ⏳ sin medir | Falta la prueba con 500 pacientes / 5.000 turnos |
-| RNF07 Confiabilidad | ✅ | Transacciones + `Resultado`; reintento de completar sin duplicar (`AgendaDatabaseTest`); errores de apertura y de lectura sin cierres inesperados |
+| RNF07 Confiabilidad | ✅ | Transacciones + `Resultado`; reintento de completar sin duplicar (`AgendaDatabaseTest`); errores de apertura y de lectura sin cierres inesperados; restaurar un respaldo es todo o nada |
 | RNF08 Compatibilidad | 🟡 | `minSdk` **26** (Android 8.0), igual que la preentrega. Probado en API 34 y 35; **falta probar en Android 8** |
 | RNF09 Mantenibilidad | ✅ | Reglas probadas sin Android; UI → ViewModel → repositorios |
 
@@ -451,9 +507,10 @@ Todas en `domain/rules/` (Kotlin puro, con tests).
 | `domain/rules/ReglasCobroTest` (5) | JVM | Ejemplo RF04 y validación de montos | idem |
 | `core/util/FormatosTest` (3) | JVM | Parseo de montos ("20.000", "20000,50"…) | idem |
 | `core/security/CredencialesTest` (2) | JVM | Crear y verificar usuario; contraseña nunca en texto plano | idem |
+| `core/security/CifradoRespaldoTest` (5) | JVM | Ida y vuelta con la misma contraseña, archivo sin datos en claro, rechazo con otra contraseña, archivo modificado o ajeno | idem |
 | `data/AgendaDatabaseTest` (3) | Instrumentado | Archivo cifrado, superposición en transacción, cobro RF04 y completar idempotente | `./gradlew :app:connectedDebugAndroidTest` |
 
-**Resultado actual:** 25/25 JVM ✅ · 3/3 instrumentados ✅ (corridos antes de las últimas pantallas) · lint sin errores.
+**Resultado actual:** 30/30 JVM ✅ · 3/3 instrumentados ✅ (corridos antes de Hilt y las 2 Activities; hay que volver a correrlos) · lint sin errores · build release con R8 ✅.
 
 **Prueba manual en emulador** (Android 14, AVD liviano): registro, login correcto e incorrecto, alta y edición de paciente, turno desde hueco, completar + cobro parcial + total, error de monto, agenda de otro día, reprogramar + WhatsApp, bloqueo válido y rechazado, cerrar sesión. Sin crashes.
 
@@ -477,7 +534,9 @@ Definidas en `gradle/libs.versions.toml`.
 | androidx.sqlite | 2.6.2 | Requerido por SQLCipher |
 | Biometric | 1.1.0 | Huella / PIN |
 | DataStore Preferences | 1.2.1 | Preferencias no sensibles |
-| kotlinx-serialization-json | 1.9.0 | Rutas de navegación |
+| Hilt (hilt-android, hilt-compiler) | 2.59.2 | Inyección de dependencias |
+| androidx.hilt lifecycle-viewmodel-compose | 1.3.0 | `hiltViewModel()` en Compose |
+| kotlinx-serialization-json | 1.9.0 | Rutas de navegación y formato del respaldo |
 | JUnit 4 / coroutines-test | 4.13.2 / 1.10.2 | Tests |
 
 ---
@@ -528,7 +587,21 @@ La consigna pide que toda modificación significativa pueda **explicarse y justi
 - Si una lectura falla con la app abierta, se muestra un aviso en lugar de cerrarse.
 - **Por qué:** la consigna pide comunicar qué ocurre y qué puede hacer el usuario. El caso más realista es que Android invalide la clave del Keystore (por ejemplo, al quitar el bloqueo de pantalla).
 
-### 12.6 Otros
+### 12.6 Respaldo cifrado (nuevo)
+
+- **Antes:** "sin recuperación" si se perdía el celular.
+- **Ahora:** *Exportar respaldo* y *Restaurar respaldo* desde el menú ⋮, a un archivo cifrado con contraseña propia que el usuario guarda donde quiera.
+- **Por qué:** perder o que roben el celular es el riesgo más probable para un profesional independiente, y sin respaldo perdería toda la agenda y la deuda de sus pacientes. Se eligió un archivo cifrado en lugar de un servidor para respetar el modelo local-first y la Ley 25.326 (datos de salud = datos sensibles): ningún tercero puede leer el archivo.
+- **Texto sugerido** (nuevo requerimiento):
+  > **RF06 Respaldo.** El profesional puede exportar todos sus datos a un archivo cifrado con una contraseña elegida por él y guardarlo donde prefiera (por ejemplo, en Google Drive). En otro dispositivo puede restaurarlo con esa contraseña; la restauración reemplaza los datos existentes. Si la contraseña se olvida, el respaldo no puede recuperarse.
+
+### 12.7 Dos Activities (Acceso + Principal)
+
+- **Antes:** una sola Activity mostraba el login o la app según un `when`.
+- **Ahora:** `AccesoActivity` (login, registro y apertura de la base) y `MainActivity` (las 4 pestañas). Ver la tabla de situaciones en §3.8.
+- **Por qué:** separar responsabilidades, que cerrar sesión destruya todo lo que tiene datos de pacientes en memoria, y que un bloqueo por inactividad no le haga perder al usuario la pantalla en la que estaba.
+
+### 12.8 Otros
 
 | Tema | Detalle |
 |---|---|
@@ -537,6 +610,8 @@ La consigna pide que toda modificación significativa pueda **explicarse y justi
 | Retrofit | No se usa: no hay comunicación remota en la v1 (la integración con prepagas era de la fase paga, fuera de alcance) |
 | Íconos | Material *core* + 4 vectores propios (el APK bajó de 29 a 22 MB) |
 | `.gitignore` | `data/` ignoraba también la capa de datos del código; ahora es `/data/`. Se versiona `gradle-wrapper.jar` |
+| Hilt | Reemplaza la inyección manual (`AppContainer` + `fabricaViewModel`), como se vio en clase |
+| Responsive | En horizontal o en tablet la navegación pasa al costado (`NavigationRail`) y el contenido tiene un ancho máximo de 720 dp |
 
 ## 13. Verificaciones pendientes
 
@@ -546,7 +621,11 @@ Cosas **no probadas todavía** o que conviene revisar antes de la entrega:
 - [ ] **Probar en un celular real**, idealmente con WhatsApp instalado, para verificar que *Abrir WhatsApp* abre el chat con el texto.
 - [ ] **Huella / PIN**: no se pudo probar en el emulador (no tenía bloqueo configurado).
 - [ ] **Bloqueo a los 2 minutos**: dejar la app en segundo plano > 2 min y verificar que pide login.
-- [ ] **Release**: generar un APK release y verificar `FLAG_SECURE` (pantalla en negro en recientes) y que la app funciona con R8 (hoy `optimization.enable = false`).
+- [ ] **Release con R8**: el APK release compila con R8 activado; falta **instalarlo y recorrer la app** (si R8 quitara algo que se usa por reflexión, fallaría recién al ejecutar). Verificar también `FLAG_SECURE` (pantalla en negro en recientes). Para instalarlo hay que firmarlo (Android Studio → *Generate Signed APK*).
+- [ ] **Respaldo**: exportar a Drive y a Descargas, restaurar en un emulador limpio, probar contraseña incorrecta y un archivo que no es respaldo.
+- [ ] **Dos Activities**: cerrar sesión, Atrás desde Hoy y desde el login pedido encima, bloqueo a los 2 min (debe volver a la misma pestaña), y "Opciones de desarrollador → No conservar actividades" para simular la muerte del proceso.
+- [ ] **Rotación**: girar con cada diálogo abierto y a medio completar (debe conservar lo escrito, salvo contraseñas).
+- [ ] **Horizontal y tablet**: barra lateral, agenda con espacio suficiente, ancho máximo en tablet.
 - [ ] **RNF05 Accesibilidad**: TalkBack recorriendo las 5 pantallas; texto al 200 % (Ajustes → Pantalla → Tamaño de fuente) sin cortes, en especial los botones lado a lado de Agenda.
 - [ ] **RNF06 Rendimiento**: cargar 500 pacientes y 5.000 turnos ficticios y medir las consultas.
 - [ ] **RNF08 Compatibilidad**: probar en Android 8.0 (API 26) y en una versión reciente.
@@ -556,6 +635,7 @@ Cosas **no probadas todavía** o que conviene revisar antes de la entrega:
 - [ ] **Bloqueos de varios días**: probar un bloqueo de vacaciones de una semana y su visualización en cada día.
 - [ ] **Desactivar paciente con turnos futuros**: hoy se permite y los turnos quedan; decidir si hay que avisar o cancelarlos.
 - [ ] **Licencia de SQLCipher**: verificar requisitos de atribución antes de publicar.
+- [ ] **Pantalla de error de la base, mensaje de huella y cambios de UX del PR anterior** (paleta, "Falta cobrar"): tampoco se pudieron ver en el emulador por falta de memoria.
 
 ---
 
@@ -567,7 +647,7 @@ Cosas **no probadas todavía** o que conviene revisar antes de la entrega:
 2. **Duración de los huecos** según la duración predeterminada (hoy son de 60 min fijos en `ArmadoAgenda.armar`).
 3. **Recuperación de contraseña**: hoy, si el profesional la olvida, solo puede borrar los datos de la app. Opciones: pregunta de seguridad, o permitir reset usando la huella/PIN del celular.
 4. **Cambiar contraseña** desde la app.
-5. **Exportar / respaldar datos** (carpeta `presentation/respaldo` prevista): exportación cifrada manual, para mitigar el "sin recuperación".
+5. **Recordatorio de respaldo**: avisar si pasaron más de 7 días desde el último (guardar la fecha en DataStore). Más adelante, respaldo automático programado con WorkManager a una carpeta elegida una vez.
 6. **Vista semanal o mensual** de la agenda.
 7. **Turnos recurrentes** (ej. todos los martes 10:00), muy comunes en psicología.
 8. **Reporte de cancelaciones** anual por paciente (hoy solo está el número en la ficha).
@@ -577,14 +657,14 @@ Cosas **no probadas todavía** o que conviene revisar antes de la entrega:
 
 ### Técnicas
 
-1. **Habilitar R8** en release (`optimization.enable = true`) y probar las reglas de keep de SQLCipher/Room.
+1. **Baseline Profile** para que ART compile por adelantado (AOT) los métodos del arranque y el primer uso sea más rápido.
 2. **Tests de ViewModel** con repositorios falsos (hoy solo hay tests de reglas y de base).
 3. **Tests de UI** con Compose (`createComposeRule`) para los flujos principales.
 4. **Tests de capturas** (Roborazzi/Paparazzi) para revisar pantallas sin emulador — útil en compus lentas.
 5. **Migraciones de Room**: el esquema v1 está exportado en `app/schemas/`; cualquier cambio de tablas necesita una migración.
 6. **Bloquear la clave de la base a la autenticación** (`setUserAuthenticationRequired`) para que la base no pueda abrirse sin login.
 7. **Limitar intentos de login** (demora creciente tras varios errores).
-8. **Inyección de dependencias con Hilt** si el proyecto crece.
+8. **Tests de Hilt** (`@HiltAndroidTest`) reemplazando los repositorios por falsos.
 9. **CI en GitHub Actions**: compilar + tests + lint en cada PR.
 10. **Strings**: algunos textos del borrador de WhatsApp están en el ViewModel; moverlos a `strings.xml`.
 11. **Dividir `Daos.kt` y `Entidades.kt`** en un archivo por clase si crecen.
@@ -594,9 +674,8 @@ Cosas **no probadas todavía** o que conviene revisar antes de la entrega:
 
 1. Mostrar el **saldo del paciente** dentro del panel de acciones del turno.
 2. En *Nuevo turno*, **buscador de pacientes** cuando la lista sea larga (hoy es un menú desplegable).
-3. Deshabilitar en el calendario los **domingos** y días fuera de horario.
-4. Indicador visual del **día de hoy** en la Agenda y atajo "Volver a hoy".
-5. Confirmación antes de **cerrar sesión** si hay un formulario a medio completar.
+3. Confirmación antes de **cerrar sesión** si hay un formulario a medio completar.
+4. Vista de **dos paneles** en tablet (lista de pacientes + ficha al lado).
 
 ---
 
@@ -610,8 +689,98 @@ Cosas **no probadas todavía** o que conviene revisar antes de la entrega:
 | Agregar un campo a una tabla | `data/local/entity/Entidades.kt` + `Mapeos.kt` + modelo en `domain/model/` + **subir versión y migración** en `AgendaDatabase.kt` |
 | Agregar una consulta | `data/local/dao/Daos.kt` → interfaz en `domain/repository/Repositorios.kt` → `*RepositoryImpl.kt` |
 | Agregar una pantalla/pestaña | Ruta en `Rutas.kt`, `composable<…>` y pestaña en `AgendaSaludNavHost.kt` |
-| Agregar un diálogo a una pantalla | Estado `var x by remember` en la pantalla + composable del diálogo (ver `TurnoDialogos.kt`) |
+| Agregar un diálogo a una pantalla | Estado `var x by rememberSaveable` en la pantalla (guardar ids, no objetos) + composable del diálogo (ver `TurnoDialogos.kt`) |
+| Agregar un ViewModel | `@HiltViewModel class X @Inject constructor(...)` y en la pantalla `viewModel: X = hiltViewModel()` |
+| Agregar una dependencia inyectable | `di/ModuloApp.kt` (`@Provides` o `@Binds`) |
 | Mostrar un aviso | Desde el ViewModel: `avisar(Aviso.Exito(R.string.…))` |
 | Agregar un error de negocio | `ErrorDominio` en `Resultado.kt` + texto en `Avisos.kt` (`mensaje()`) + `strings.xml` |
 
 **Flujo de trabajo** (sección 16 de la preentrega): `main` estable, ramas `feature/*`, PR revisado por otro integrante, commits chicos.
+
+---
+
+## 16. Teoría de la cursada aplicada al proyecto
+
+Cada tema de los apuntes y dónde se aplica, para la defensa.
+
+### Build y runtime (AndroidRuntime)
+
+| Tema | En el proyecto |
+|---|---|
+| **D8** (`.class` → `.dex`) | Lo usa AGP por defecto en todas las compilaciones |
+| **Desugaring** | No hace falta: con `minSdk 26`, `java.time` (fechas y horas de toda la app) ya es nativo. Habría que activarlo (`isCoreLibraryDesugaringEnabled`) solo si se bajara a API 24 |
+| **R8** (shrinking, optimización, ofuscación) | Activado en release: `optimization { enable = true }` en `app/build.gradle.kts`. Es la sintaxis de AGP 9, que reemplaza a `isMinifyEnabled` |
+| **shrinkResources** | En AGP 9 viene incluido en `optimization.enable`: quita drawables y recursos que no se usan |
+| **Reglas keep** | `app/proguard-rules.pro`: SQLCipher llama clases desde código nativo (JNI), que R8 no ve. Room, Hilt, Navigation y kotlinx.serialization traen sus propias reglas |
+| **Multidex** | Automático: con `minSdk ≥ 21`, ART soporta varios `.dex`. Además, con R8 la app queda lejos de 65.536 métodos |
+| **JIT / AOT / perfiles** | ART compila con JIT al principio y AOT en segundo plano con el perfil de uso. Sugerencia: *Baseline Profile* (§14) |
+
+### Persistencia (apuntePersistencia, persistencia_android_room)
+
+| Tema | En el proyecto |
+|---|---|
+| **No JSON en SharedPreferences** | No se usa SharedPreferences. JSON solo dentro del archivo de respaldo, cifrado |
+| **DataStore** en lugar de SharedPreferences | `PreferenciasRepositoryImpl` (duración e importe sugeridos), con corrutinas y `Flow` |
+| **Almacenamiento interno privado** | `noBackupFilesDir`: credenciales y clave de la base. Nunca almacenamiento externo |
+| **SAF para archivos compartibles** | El respaldo usa `CreateDocument` / `OpenDocument`: elige el usuario, sin permisos de almacenamiento |
+| **Política de cierre de sesión** | Se destruye `MainActivity` y se **cierra la base** (`BaseDatosCifrada.cerrar`). La clave sigue protegida por el Keystore. No hay tokens (sin servidor). Los datos **no se purgan** a propósito: en local-first el celular es la única copia |
+| **SSOT** | Room es la única fuente de verdad: las pantallas observan `Flow` de Room y se actualizan solas |
+| **SQL injection** | Todas las consultas usan parámetros (`:busqueda`, `:desde`…), nunca concatenación |
+| **DAO `suspend` / `Flow`** | Escrituras y lecturas puntuales `suspend`; observación con `Flow` |
+| **Filtrar en SQL** | `WHERE`, `ORDER BY` y `GROUP BY` (saldos) en la consulta, no en memoria |
+| **@Transaction** | `AgendaDatabase.transaccion` en todas las escrituras compuestas; restaurar un respaldo es una transacción |
+| **Migraciones** | Esquema exportado (`app/schemas/`), sin `fallbackToDestructiveMigration` |
+| **Cifrado** | SQLCipher + Keystore para la base; PBKDF2 para la contraseña; AES-GCM para el respaldo |
+
+### Arquitectura (Arquitectura Reactiva en Android Moderno)
+
+| Tema | En el proyecto |
+|---|---|
+| **Hilt** | `@HiltAndroidApp`, `@AndroidEntryPoint`, `@HiltViewModel` + `@Inject constructor`, módulos en `di/ModuloApp.kt` |
+| **`hiltViewModel()`** en Compose | En cada pantalla; el ViewModel queda atado a la entrada de navegación de su pestaña |
+| **Separación de capas** | `presentation` → `domain` (Kotlin puro, sin Android ni Hilt) ← `data` |
+| **Mappers** | `data/local/Mapeos.kt` (entidad ↔ dominio) y `data/respaldo/RespaldoJson.kt` (entidad ↔ JSON) |
+| **MutableStateFlow privado** | Siempre `_x` privado y `x = _x.asStateFlow()` |
+| **UDF** | La pantalla emite eventos (`viewModel::cambiarFecha`) y recibe estado inmutable |
+
+### Reactividad
+
+| Tema | En el proyecto |
+|---|---|
+| **`collectAsStateWithLifecycle`** | En todas las pantallas; no hay `collectAsState()` |
+| **`sealed interface` para el estado** | `EstadoUi` (Cargando / Error / Contenido), `PasoRespaldo`, `EstadoBase`, `Resultado`, `ErrorDominio`, `ItemAgenda` |
+| **Estado vs. eventos** | Estado en `StateFlow`; snackbars y pedidos de abrir el selector de archivos por `Channel` (un solo consumo, como `SharedFlow(replay = 0)`, pero sin perder un aviso emitido justo durante una rotación) |
+| **`debounce` / `distinctUntilChanged` / `flatMapLatest`** | Búsqueda de pacientes (300 ms); cambio de día en la agenda cancela la consulta anterior |
+| **Scopes acotados** | `viewModelScope` en ViewModels, `lifecycleScope` + `repeatOnLifecycle(STARTED)` en las Activities |
+
+### Ciclo de vida
+
+| Tema | En el proyecto |
+|---|---|
+| **Simetría** | Observador de proceso registrado en `AgendaSaludApp.onCreate` (vive lo mismo que el proceso). La base se abre tras el login y se cierra en `MainActivity.onDestroy` cuando `isFinishing` |
+| **Persistir en `onStop`, no en `onDestroy`** | El momento de pasar a segundo plano se registra en `onStop` (`SesionSeguridad`). Los datos se guardan en el momento de cada acción, nunca al cerrar |
+| **No bloquear `onPause`** | No se usa `onPause` |
+| **Sin fugas de Context** | Ningún singleton guarda una Activity: Hilt inyecta `@ApplicationContext` |
+| **Rotación y muerte del proceso** | ViewModel para la rotación + `SavedStateHandle` (día de la agenda, búsqueda, filtros, ficha abierta) + `rememberSaveable` en todos los diálogos (se guardan ids y fechas, no objetos) |
+| **`onCleared`** | `RespaldoViewModel.onCleared` borra de memoria la contraseña pendiente |
+| **`LifecycleStartEffect`** | En Hoy y Agenda: al volver a la pantalla se refresca la hora (oculta huecos pasados) y Hoy salta al día actual |
+| **`LaunchedEffect` / `DisposableEffect`** | `LaunchedEffect` para recolectar avisos y pedidos de selector. No hizo falta `DisposableEffect`: no hay recursos que liberar a mano |
+
+### Compose
+
+| Tema | En el proyecto |
+|---|---|
+| **Composables sin efectos secundarios** | Sin I/O ni consultas en el cuerpo ni en los clics: todo pasa por el ViewModel |
+| **State hoisting** | Diálogos y componentes sin estado propio de negocio: reciben datos y avisan con callbacks (`alGuardar`, `alCerrar`) |
+| **`modifier: Modifier = Modifier`** | En todos los componentes reutilizables y en las pantallas |
+
+### UX/UI
+
+| Tema | En el proyecto |
+|---|---|
+| **Ley de Fitts** | Botones de 48 dp como mínimo; acciones principales abajo, al alcance del pulgar |
+| **Feedback inmediato** | Spinner al cargar, error con *Reintentar*, estados vacíos con mensaje y snackbar al confirmar cada acción |
+| **Material 3** | `Scaffold`, `NavigationBar` / `NavigationRail`, diálogos y paneles M3, paleta propia |
+| **Responsive** | Navegación lateral en horizontal o tablet; ancho máximo de 720 dp; login de 480 dp como máximo |
+| **Proceso de diseño** | Wireframes en Figma → paleta y tipografía (`ui/theme/`). Falta documentar un prototipo navegable y una prueba con usuarios |
+
