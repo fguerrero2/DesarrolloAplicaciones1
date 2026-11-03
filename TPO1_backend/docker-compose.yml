@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tpo1_backend_api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=development
+      - PROJECT_NAME=AgendaSalud Backend (Docker Local)
+      - SECRET_KEY=clave-secreta-super-segura-para-pruebas-locales-123456
+      - MONGODB_URI=mongodb://mongo:27017
+      - MONGODB_DB_NAME=agendasalud_local
+      - FRONTEND_RESET_PASSWORD_URL=agendasalud://reset-password
+    depends_on:
+      - mongo
+    networks:
+      - tpo1_network
+
+  mongo:
+    image: mongo:7.0
+    container_name: tpo1_backend_mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - tpo1_network
+
+networks:
+  tpo1_network:
+    driver: bridge
+
+volumes:
+  mongo_data:
+    driver: local
+
