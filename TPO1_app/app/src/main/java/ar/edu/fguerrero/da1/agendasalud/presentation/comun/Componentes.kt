@@ -20,6 +20,7 @@ import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.AlertDialog
@@ -55,7 +56,10 @@ import java.time.LocalTime
 import java.time.ZoneOffset
 
 /** Acciones del menú de cuenta que el NavHost pone a disposición de todas las pantallas. */
-class AccionesCuenta(
+data class AccionesCuenta(
+    /** Estado de la sincronización con el servidor, ya como texto ("Sincronizado a las 10:42"). */
+    val estadoSincronizacion: String,
+    val sincronizar: () -> Unit,
     val exportarRespaldo: () -> Unit,
     val restaurarRespaldo: () -> Unit,
     val cerrarSesion: () -> Unit,
@@ -88,6 +92,20 @@ private fun MenuCuenta(acciones: AccionesCuenta) {
             Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.menu_cuenta))
         }
         DropdownMenu(expanded = abierto, onDismissRequest = { abierto = false }) {
+            // Solo informativo: deshabilitado para que no parezca un botón
+            DropdownMenuItem(
+                text = { Text(acciones.estadoSincronizacion, style = MaterialTheme.typography.bodySmall) },
+                enabled = false,
+                onClick = {},
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.sync_ahora)) },
+                onClick = {
+                    abierto = false
+                    acciones.sincronizar()
+                },
+            )
+            HorizontalDivider()
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.respaldo_exportar)) },
                 onClick = {

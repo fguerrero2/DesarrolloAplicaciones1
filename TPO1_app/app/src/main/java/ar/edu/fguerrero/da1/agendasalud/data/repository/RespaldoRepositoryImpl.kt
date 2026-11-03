@@ -2,18 +2,11 @@ package ar.edu.fguerrero.da1.agendasalud.data.repository
 
 import android.content.Context
 import androidx.core.net.toUri
-import androidx.room.withTransaction
 import ar.edu.fguerrero.da1.agendasalud.core.security.CifradoRespaldo
 import ar.edu.fguerrero.da1.agendasalud.data.local.AgendaDatabase
-import ar.edu.fguerrero.da1.agendasalud.data.local.entity.BloqueoEntity
-import ar.edu.fguerrero.da1.agendasalud.data.local.entity.CambioTurnoEntity
-import ar.edu.fguerrero.da1.agendasalud.data.local.entity.CargoSesionEntity
-import ar.edu.fguerrero.da1.agendasalud.data.local.entity.CobroEntity
-import ar.edu.fguerrero.da1.agendasalud.data.local.entity.PacienteEntity
-import ar.edu.fguerrero.da1.agendasalud.data.local.entity.TurnoEntity
+import ar.edu.fguerrero.da1.agendasalud.data.respaldo.Instantanea
 import ar.edu.fguerrero.da1.agendasalud.data.respaldo.RespaldoJson
-import ar.edu.fguerrero.da1.agendasalud.data.respaldo.aEntidad
-import ar.edu.fguerrero.da1.agendasalud.data.respaldo.aJson
+import ar.edu.fguerrero.da1.agendasalud.data.respaldo.resumen
 import ar.edu.fguerrero.da1.agendasalud.domain.model.ErrorDominio
 import ar.edu.fguerrero.da1.agendasalud.domain.model.Resultado
 import ar.edu.fguerrero.da1.agendasalud.domain.model.ResumenRespaldo
@@ -22,10 +15,8 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.Json
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
-import java.time.LocalDateTime
 import javax.inject.Inject
 
 /**
@@ -38,23 +29,12 @@ class RespaldoRepositoryImpl @Inject constructor(
     private val db: AgendaDatabase,
 ) : RespaldoRepository {
 
-    private val dao = db.respaldoDao()
-    private val formato = Json { ignoreUnknownKeys = true }
+    private val instantanea = Instantanea(db)
+    private val formato = Instantanea.formato
 
     override suspend fun exportar(destino: String, contrasenia: CharArray): Resultado<ResumenRespaldo> =
         conContrasenia(contrasenia) {
-            // Se lee en una transacción para que el respaldo sea una foto consistente
-            val respaldo = db.withTransaction {
-                RespaldoJson(
-                    creado = LocalDateTime.now().toString(),
-                    pacientes = dao.pacientes().map { it.aJson() },
-                    turnos = dao.turnos().map { it.aJson() },
-                    bloqueos = dao.bloqueos().map { it.aJson() },
-                    cargos = dao.cargos().map { it.aJson() },
-                    cobros = dao.cobros().map { it.aJson() },
-                    cambios = dao.cambios().map { it.aJson() },
-                )
-            }
+            val respaldo = instantanea.leer()
             val cifrado = CifradoRespaldo.cifrar(formato.encodeToString(respaldo).encodeToByteArray(), contrasenia)
             val salida = context.contentResolver.openOutputStream(destino.toUri(), "w")
                 ?: return@conContrasenia Resultado.Fallo(ErrorDominio.ErrorArchivo)
@@ -70,9 +50,7 @@ class RespaldoRepositoryImpl @Inject constructor(
             // Contraseña incorrecta, archivo dañado o de otra app: se rechaza sin tocar la base
             val respaldo = try {
                 val json = CifradoRespaldo.descifrar(archivo, contrasenia).decodeToString()
-                formato.decodeFromString<RespaldoJson>(json).also {
-                    if (it.version > RespaldoJson.VERSION_FORMATO) return@conContrasenia Resultado.Fallo(ErrorDominio.RespaldoInvalido)
-                }
+                formato.decodeFromString<RespaldoJson>(json)
             } catch (e: CifradoRespaldo.RespaldoIlegibleException) {
                 return@conContrasenia Resultado.Fallo(ErrorDominio.RespaldoInvalido)
             } catch (e: IllegalArgumentException) {
@@ -80,30 +58,14 @@ class RespaldoRepositoryImpl @Inject constructor(
                 return@conContrasenia Resultado.Fallo(ErrorDominio.RespaldoInvalido)
             }
 
-            val filas = try {
-                Filas(
-                    respaldo.pacientes.map { it.aEntidad() },
-                    respaldo.turnos.map { it.aEntidad() },
-                    respaldo.bloqueos.map { it.aEntidad() },
-                    respaldo.cargos.map { it.aEntidad() },
-                    respaldo.cobros.map { it.aEntidad() },
-                    respaldo.cambios.map { it.aEntidad() },
-                )
-            } catch (e: RuntimeException) {
-                // Fecha o estado ilegible dentro de un JSON válido
-                return@conContrasenia Resultado.Fallo(ErrorDominio.RespaldoInvalido)
-            }
-
-            // Todo o nada: si falla un insert (por ejemplo, una clave foránea), la base queda como estaba
-            db.transaccion {
-                dao.borrarTodo()
-                dao.insertarPacientes(filas.pacientes)
-                dao.insertarTurnos(filas.turnos)
-                dao.insertarCambios(filas.cambios)
-                dao.insertarBloqueos(filas.bloqueos)
-                dao.insertarCargos(filas.cargos)
-                dao.insertarCobros(filas.cobros)
-                respaldo.resumen()
+            // Todo o nada: si falla, la base queda como estaba
+            try {
+                Resultado.Exito(instantanea.restaurar(respaldo))
+            } catch (e: IllegalArgumentException) {
+                Resultado.Fallo(ErrorDominio.RespaldoInvalido)
+            } catch (e: java.time.DateTimeException) {
+                // Fecha ilegible dentro de un JSON válido
+                Resultado.Fallo(ErrorDominio.RespaldoInvalido)
             }
         }
 
@@ -141,16 +103,7 @@ class RespaldoRepositoryImpl @Inject constructor(
         }
     }
 
-    private class Filas(
-        val pacientes: List<PacienteEntity>,
-        val turnos: List<TurnoEntity>,
-        val bloqueos: List<BloqueoEntity>,
-        val cargos: List<CargoSesionEntity>,
-        val cobros: List<CobroEntity>,
-        val cambios: List<CambioTurnoEntity>,
-    )
 
-    private fun RespaldoJson.resumen() = ResumenRespaldo(pacientes = pacientes.size, turnos = turnos.size, cobros = cobros.size)
 
     private companion object {
         const val MAXIMO_BYTES = 50 * 1024 * 1024

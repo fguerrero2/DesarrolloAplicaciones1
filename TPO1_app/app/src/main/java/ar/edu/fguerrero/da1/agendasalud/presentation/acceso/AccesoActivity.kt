@@ -39,12 +39,16 @@ class AccesoActivity : FragmentActivity() {
 
     private val viewModel: AccesoViewModel by viewModels()
 
+    // Misma instancia que usa LoginScreen (hiltViewModel() toma el ViewModelStore de esta Activity)
+    private val login: LoginViewModel by viewModels()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         protegerPantalla()
         enableEdgeToEdge()
 
         val sobreLaApp = intent.getBooleanExtra(EXTRA_SOBRE_LA_APP, false)
+        manejarEnlace(intent)
         if (sobreLaApp) {
             // Si la app quedó abajo bloqueada, "Atrás" no puede volver a ella sin autenticarse: sale de la app
             onBackPressedDispatcher.addCallback(this) { finishAffinity() }
@@ -56,7 +60,14 @@ class AccesoActivity : FragmentActivity() {
                 combine(viewModel.desbloqueada, viewModel.estadoBase) { desbloqueada, estado ->
                     desbloqueada && estado == EstadoBase.Lista
                 }.first { it }
-                if (!sobreLaApp) startActivity(Intent(this@AccesoActivity, MainActivity::class.java))
+                if (!sobreLaApp) {
+                    // CLEAR_TASK: si había otra MainActivity (por ejemplo, se abrió el enlace del mail
+                    // con la app abierta), se reemplaza en vez de quedar dos
+                    startActivity(
+                        Intent(this@AccesoActivity, MainActivity::class.java)
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                    )
+                }
                 finish()
             }
         }
@@ -76,6 +87,25 @@ class AccesoActivity : FragmentActivity() {
                 }
             }
         }
+    }
+
+    /** singleTop: si el enlace llega con esta pantalla ya abierta, entra por acá. */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        manejarEnlace(intent)
+    }
+
+    /**
+     * Enlace del mail de recuperación (agendasalud://reset-password?token=…). Se cierra la sesión
+     * si estaba abierta y se muestra el formulario de nueva contraseña.
+     */
+    private fun manejarEnlace(intent: Intent) {
+        val datos = intent.data ?: return
+        if (datos.scheme != "agendasalud" || datos.host != "reset-password") return
+        val token = datos.getQueryParameter("token") ?: return
+        viewModel.salir()
+        login.recibirEnlace(token)
     }
 
     companion object {

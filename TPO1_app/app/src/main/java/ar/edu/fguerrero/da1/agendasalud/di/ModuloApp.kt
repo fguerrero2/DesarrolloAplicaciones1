@@ -21,13 +21,31 @@ import ar.edu.fguerrero.da1.agendasalud.domain.repository.TurnoRepository
 import ar.edu.fguerrero.da1.agendasalud.domain.usecase.CompletarSesion
 import ar.edu.fguerrero.da1.agendasalud.domain.usecase.RegistrarCobro
 import ar.edu.fguerrero.da1.agendasalud.domain.usecase.ReservarTurno
+import ar.edu.fguerrero.da1.agendasalud.BuildConfig
+import ar.edu.fguerrero.da1.agendasalud.data.remoto.AlmacenCuenta
+import ar.edu.fguerrero.da1.agendasalud.data.remoto.ApiAgendaSalud
+import ar.edu.fguerrero.da1.agendasalud.data.remoto.CuentaRepositoryImpl
+import ar.edu.fguerrero.da1.agendasalud.data.remoto.InterceptorAutenticacion
+import ar.edu.fguerrero.da1.agendasalud.data.sync.SincronizacionRepositoryImpl
+import ar.edu.fguerrero.da1.agendasalud.domain.repository.CuentaRepository
+import ar.edu.fguerrero.da1.agendasalud.domain.repository.SincronizacionRepository
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.serialization.json.Json
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import retrofit2.Retrofit
+import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import java.io.File
+import java.util.concurrent.TimeUnit
+import javax.inject.Qualifier
 import javax.inject.Singleton
 
 /**
@@ -75,6 +93,40 @@ object ModuloDatos {
     fun registrarCobro(cobros: CobroRepository) = RegistrarCobro(cobros)
 }
 
+/** Alcance de corrutinas de toda la app: para tareas que tienen que terminar aunque se cierre una pantalla. */
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class AlcanceApp
+
+/** Red: Retrofit + OkHttp contra el backend del equipo (URL_SERVIDOR distinta en debug y release). */
+@Module
+@InstallIn(SingletonComponent::class)
+object ModuloRed {
+
+    @Provides
+    @Singleton
+    @AlcanceApp
+    fun alcanceApp(): CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    @Provides
+    @Singleton
+    fun api(almacen: AlmacenCuenta): ApiAgendaSalud {
+        // Sin interceptor de logging a propósito: los pedidos llevan el token y datos (aunque cifrados).
+        // Timeouts generosos: Vercel "despierta" la función en el primer pedido (cold start).
+        val cliente = OkHttpClient.Builder()
+            .connectTimeout(20, TimeUnit.SECONDS)
+            .readTimeout(40, TimeUnit.SECONDS)
+            .addInterceptor(InterceptorAutenticacion(almacen))
+            .build()
+        return Retrofit.Builder()
+            .baseUrl(BuildConfig.URL_SERVIDOR)
+            .client(cliente)
+            .addConverterFactory(Json { ignoreUnknownKeys = true }.asConverterFactory("application/json".toMediaType()))
+            .build()
+            .create(ApiAgendaSalud::class.java)
+    }
+}
+
 /** Interfaz del dominio → implementación de la capa data. */
 @Module
 @InstallIn(SingletonComponent::class)
@@ -84,6 +136,10 @@ abstract class ModuloRepositorios {
     @Binds abstract fun bloqueos(impl: BloqueoRepositoryImpl): BloqueoRepository
     @Binds abstract fun cobros(impl: CobroRepositoryImpl): CobroRepository
     @Binds abstract fun respaldo(impl: RespaldoRepositoryImpl): RespaldoRepository
+    @Binds abstract fun sincronizacion(impl: SincronizacionRepositoryImpl): SincronizacionRepository
+
+    // CuentaRepositoryImpl es @Singleton y no depende de la base
+    @Binds abstract fun cuenta(impl: CuentaRepositoryImpl): CuentaRepository
 
     @Binds
     @Singleton

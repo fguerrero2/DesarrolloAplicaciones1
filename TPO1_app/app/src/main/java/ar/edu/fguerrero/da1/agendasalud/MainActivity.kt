@@ -18,10 +18,14 @@ import ar.edu.fguerrero.da1.agendasalud.core.security.SesionSeguridad
 import ar.edu.fguerrero.da1.agendasalud.core.security.protegerPantalla
 import ar.edu.fguerrero.da1.agendasalud.data.local.BaseDatosCifrada
 import ar.edu.fguerrero.da1.agendasalud.data.local.EstadoBase
+import ar.edu.fguerrero.da1.agendasalud.data.sync.ProgramadorSincronizacion
+import ar.edu.fguerrero.da1.agendasalud.di.AlcanceApp
+import ar.edu.fguerrero.da1.agendasalud.domain.repository.CuentaRepository
 import ar.edu.fguerrero.da1.agendasalud.presentation.acceso.AccesoActivity
 import ar.edu.fguerrero.da1.agendasalud.presentation.navegacion.AgendaSaludNavHost
 import ar.edu.fguerrero.da1.agendasalud.ui.theme.AgendaSaludTheme
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
@@ -36,6 +40,9 @@ class MainActivity : ComponentActivity() {
 
     @Inject lateinit var sesion: SesionSeguridad
     @Inject lateinit var base: BaseDatosCifrada
+    @Inject lateinit var cuenta: CuentaRepository
+    @Inject lateinit var programador: ProgramadorSincronizacion
+    @Inject @AlcanceApp lateinit var alcanceApp: CoroutineScope
 
     private var cerrandoSesion = false
 
@@ -69,8 +76,14 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /**
+     * Cierre de sesión: se cancela la sincronización programada, se borra el token del backend y
+     * se vuelve al login. Los datos locales no se borran (ver IMPLEMENTACION.md §16).
+     */
     private fun cerrarSesion() {
         cerrandoSesion = true
+        programador.cancelar()
+        alcanceApp.launch { cuenta.cerrarSesion() }
         sesion.bloquear()
         AccesoActivity.cerrarSesion(this)
     }

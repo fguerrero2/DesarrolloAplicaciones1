@@ -21,6 +21,14 @@ sealed interface ErrorDominio {
 
     /** No se pudo abrir o escribir el archivo elegido (por ejemplo, Drive sin conexión). */
     data object ErrorArchivo : ErrorDominio
+
+    // Cuenta en el servidor
+    data object SinConexion : ErrorDominio
+    data object CredencialesInvalidas : ErrorDominio
+    data object UsuarioExistente : ErrorDominio
+    data object EmailInvalido : ErrorDominio
+    data object EnlaceVencido : ErrorDominio
+    data object ErrorServidor : ErrorDominio
 }
 
 sealed interface Resultado<out T> {

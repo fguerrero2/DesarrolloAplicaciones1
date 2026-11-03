@@ -27,6 +27,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -44,6 +45,8 @@ import ar.edu.fguerrero.da1.agendasalud.presentation.pacientes.PacientesScreen
 import ar.edu.fguerrero.da1.agendasalud.presentation.pagos.CobrosScreen
 import ar.edu.fguerrero.da1.agendasalud.presentation.respaldo.RespaldoDialogos
 import ar.edu.fguerrero.da1.agendasalud.presentation.respaldo.RespaldoViewModel
+import ar.edu.fguerrero.da1.agendasalud.presentation.sincronizacion.SincronizacionViewModel
+import ar.edu.fguerrero.da1.agendasalud.presentation.sincronizacion.textoSincronizacion
 import ar.edu.fguerrero.da1.agendasalud.presentation.turnos.AgendaScreen
 import ar.edu.fguerrero.da1.agendasalud.presentation.turnos.HoyScreen
 import kotlin.reflect.KClass
@@ -77,10 +80,15 @@ fun AgendaSaludNavHost(alCerrarSesion: () -> Unit, modifier: Modifier = Modifier
     val ventana = with(LocalDensity.current) { LocalWindowInfo.current.containerSize.let { DpSize(it.width.toDp(), it.height.toDp()) } }
     val navegacionLateral = ventana.width >= 600.dp || ventana.height < 480.dp
 
-    // A nivel de Activity: el respaldo se abre desde el menú de cualquiera de las 4 pantallas
+    // A nivel de Activity: respaldo y sincronización se usan desde el menú de cualquiera de las 4 pantallas
     val respaldo: RespaldoViewModel = hiltViewModel()
-    val acciones = remember(respaldo, alCerrarSesion) {
+    val sincronizacion: SincronizacionViewModel = hiltViewModel()
+    val estadoSync by sincronizacion.estado.collectAsStateWithLifecycle()
+    val textoSync = textoSincronizacion(estadoSync)
+    val acciones = remember(respaldo, sincronizacion, alCerrarSesion, textoSync) {
         AccionesCuenta(
+            estadoSincronizacion = textoSync,
+            sincronizar = sincronizacion::sincronizarAhora,
             exportarRespaldo = respaldo::pedirExportar,
             restaurarRespaldo = respaldo::pedirRestaurar,
             cerrarSesion = alCerrarSesion,

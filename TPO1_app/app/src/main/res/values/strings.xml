@@ -28,23 +28,20 @@
 
     <!-- Login (wireframe 01) -->
     <string name="login_titulo">Ingresar</string>
-    <string name="login_crear_titulo">Crear usuario</string>
-    <string name="login_tenia_respaldo">¿Ya usabas AgendaSalud en otro celular? Creá tu usuario y después restaurá tu respaldo desde el menú ⋮.</string>
-    <string name="login_crear_descripcion">Creá tu usuario y contraseña para proteger los datos de tus pacientes en este celular.</string>
-    <string name="login_sin_usuario">¿Todavía no tenés usuario?</string>
+    <string name="login_crear_titulo">Crear cuenta</string>
+    <string name="login_crear_descripcion">Creá tu cuenta con tu email. Tus datos quedan cifrados en este celular y se respaldan cifrados en el servidor: nadie más puede leerlos.</string>
+    <string name="login_sin_usuario">¿Primera vez? Registrate. Si ya usás AgendaSalud en otro celular, ingresá arriba con tu email: tus datos se descargan solos.</string>
     <string name="login_registrarse">Registrarse</string>
-    <string name="login_usuario">Usuario</string>
+    <string name="login_email">Email</string>
     <string name="login_contrasenia">Contraseña</string>
     <string name="login_confirmar">Repetir contraseña</string>
     <string name="login_ingresar">Ingresar</string>
-    <string name="login_crear">Crear usuario</string>
+    <string name="login_crear">Crear cuenta</string>
     <string name="login_con_huella">Ingresar con huella o PIN</string>
     <string name="login_prompt_huella">Ingresar a AgendaSalud</string>
-    <string name="login_error_usuario_vacio">Ingresá un usuario.</string>
-    <string name="login_error_contrasenia_corta">La contraseña debe tener al menos 6 caracteres.</string>
+    <string name="login_error_contrasenia_corta">La contraseña debe tener al menos 8 caracteres.</string>
     <string name="login_error_no_coinciden">Las contraseñas no coinciden.</string>
-    <string name="login_error_sin_usuario">Todavía no hay un usuario creado en este celular. Tocá Registrarse.</string>
-    <string name="login_error_credenciales">Usuario o contraseña incorrectos.</string>
+    <string name="login_error_credenciales">Email o contraseña incorrectos.</string>
 
     <!-- Hoy y Agenda (wireframes 02 y 03) -->
     <string name="hoy_titulo">Hoy</string>
@@ -211,4 +208,34 @@
     <string name="respaldo_restaurado">Datos restaurados: %1$d pacientes, %2$d turnos y %3$d cobros.</string>
     <string name="error_respaldo_invalido">No se pudo abrir el respaldo: la contraseña no es correcta o el archivo está dañado.</string>
     <string name="error_archivo">No se pudo leer o guardar el archivo. Probá de nuevo o elegí otra ubicación.</string>
+
+    <!-- Cuenta en el backend: recuperación de contraseña -->
+    <string name="recuperar_link">¿Olvidaste tu contraseña?</string>
+    <string name="recuperar_titulo">Recuperar contraseña</string>
+    <string name="recuperar_descripcion">Te enviamos un mail con un enlace para elegir una contraseña nueva. Abrilo desde este celular.</string>
+    <string name="recuperar_enviar">Enviar mail</string>
+    <string name="recuperar_enviado">Si el email está registrado, te llegó un mail con el enlace. Vence en 30 minutos.</string>
+    <string name="restablecer_titulo">Nueva contraseña</string>
+    <string name="restablecer_descripcion">Elegí una contraseña nueva. Tus datos se conservan.</string>
+    <string name="restablecer_descripcion_sin_datos">Atención: este celular no tiene tus datos. Si cambiás la contraseña desde acá, la copia guardada en el servidor no se va a poder leer (está cifrada con la contraseña anterior). Si todavía tenés el celular de antes, cambiala desde ese.</string>
+    <string name="restablecer_nueva">Contraseña nueva</string>
+    <string name="restablecer_guardar">Guardar contraseña</string>
+    <string name="restablecer_listo">Listo, ya podés ingresar con la contraseña nueva.</string>
+    <string name="restablecer_listo_sin_datos">Contraseña cambiada. Al ingresar vas a empezar sin datos: la copia anterior del servidor no se pudo conservar.</string>
+    <string name="login_error_primera_vez_sin_conexion">Para ingresar por primera vez en este celular necesitás conexión a internet.</string>
+    <string name="error_sin_conexion">Necesitás conexión a internet para esto. Probá de nuevo cuando tengas señal.</string>
+    <string name="error_usuario_existente">Ya existe una cuenta con ese email. Tocá Volver e ingresá.</string>
+    <string name="error_email_invalido">Ingresá un email válido.</string>
+    <string name="error_enlace_vencido">El enlace venció o ya se usó. Pedí uno nuevo desde ¿Olvidaste tu contraseña?</string>
+    <string name="error_servidor">El servidor no respondió bien. Probá de nuevo en unos minutos.</string>
+
+    <!-- Sincronización con el backend (menú ⋮) -->
+    <string name="sync_ahora">Sincronizar ahora</string>
+    <string name="sync_sincronizando">Sincronizando…</string>
+    <string name="sync_al_dia_hoy">Sincronizado hoy a las %1$s</string>
+    <string name="sync_al_dia">Sincronizado el %1$s a las %2$s</string>
+    <string name="sync_sin_conexion">Sin conexión: se sincroniza cuando vuelva</string>
+    <string name="sync_sin_cuenta">Sin sesión en el servidor: cerrá sesión e ingresá con tu contraseña</string>
+    <string name="sync_error">No se pudo sincronizar. Se reintenta solo.</string>
+    <string name="sync_nunca">Todavía no se sincronizó</string>
 </resources>

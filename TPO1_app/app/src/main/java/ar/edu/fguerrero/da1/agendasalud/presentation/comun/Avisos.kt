@@ -141,4 +141,10 @@ fun ErrorDominio.mensaje(): Int = when (this) {
     ErrorDominio.ErrorLectura -> R.string.error_lectura
     ErrorDominio.RespaldoInvalido -> R.string.error_respaldo_invalido
     ErrorDominio.ErrorArchivo -> R.string.error_archivo
+    ErrorDominio.SinConexion -> R.string.error_sin_conexion
+    ErrorDominio.CredencialesInvalidas -> R.string.login_error_credenciales
+    ErrorDominio.UsuarioExistente -> R.string.error_usuario_existente
+    ErrorDominio.EmailInvalido -> R.string.error_email_invalido
+    ErrorDominio.EnlaceVencido -> R.string.error_enlace_vencido
+    ErrorDominio.ErrorServidor -> R.string.error_servidor
 }

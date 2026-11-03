@@ -13,16 +13,16 @@ import ar.edu.fguerrero.da1.agendasalud.data.local.entity.TurnoEntity
 /**
  * Lectura y reemplazo completo de la base para el respaldo. Siempre se usa dentro de una
  * transacción (ver RespaldoRepositoryImpl), así el respaldo es una foto consistente y la
- * restauración es todo o nada.
+ * restauración es todo o nada. ORDER BY id: la misma base da siempre el mismo JSON (ver Instantanea.huella).
  */
 @Dao
 interface RespaldoDao {
-    @Query("SELECT * FROM pacientes") suspend fun pacientes(): List<PacienteEntity>
-    @Query("SELECT * FROM turnos") suspend fun turnos(): List<TurnoEntity>
-    @Query("SELECT * FROM bloqueos") suspend fun bloqueos(): List<BloqueoEntity>
-    @Query("SELECT * FROM cargos_sesion") suspend fun cargos(): List<CargoSesionEntity>
-    @Query("SELECT * FROM cobros") suspend fun cobros(): List<CobroEntity>
-    @Query("SELECT * FROM cambios_turno") suspend fun cambios(): List<CambioTurnoEntity>
+    @Query("SELECT * FROM pacientes ORDER BY id") suspend fun pacientes(): List<PacienteEntity>
+    @Query("SELECT * FROM turnos ORDER BY id") suspend fun turnos(): List<TurnoEntity>
+    @Query("SELECT * FROM bloqueos ORDER BY id") suspend fun bloqueos(): List<BloqueoEntity>
+    @Query("SELECT * FROM cargos_sesion ORDER BY id") suspend fun cargos(): List<CargoSesionEntity>
+    @Query("SELECT * FROM cobros ORDER BY id") suspend fun cobros(): List<CobroEntity>
+    @Query("SELECT * FROM cambios_turno ORDER BY id") suspend fun cambios(): List<CambioTurnoEntity>
 
     // Se insertan con su id original para que las claves foráneas sigan apuntando bien
     @Insert suspend fun insertarPacientes(filas: List<PacienteEntity>)

@@ -36,6 +36,12 @@ class Credenciales(private val archivo: File) {
         return hashOk && guardado == normalizar(usuario)
     }
 
+    /** Cambio de contraseña (recuperación por email): se reemplaza el hash guardado. */
+    fun reemplazar(usuario: String, contrasenia: CharArray) {
+        archivo.delete()
+        crear(usuario, contrasenia)
+    }
+
     fun usuario(): String? = if (existeUsuario()) archivo.readLines().first() else null
 
     private fun normalizar(usuario: String) = usuario.trim().lowercase()
@@ -50,7 +56,8 @@ class Credenciales(private val archivo: File) {
     }
 
     companion object {
-        const val LARGO_MINIMO = 6
+        // Igual que el backend (password con min_length = 8)
+        const val LARGO_MINIMO = 8
         private const val ITERACIONES = 120_000
     }
 }
