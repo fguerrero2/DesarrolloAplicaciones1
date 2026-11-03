@@ -42,11 +42,13 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ar.edu.fguerrero.da1.agendasalud.R
 import ar.edu.fguerrero.da1.agendasalud.core.security.Autenticador
+import ar.edu.fguerrero.da1.agendasalud.presentation.AgendaSaludLogo
 import ar.edu.fguerrero.da1.agendasalud.presentation.comun.TextoError
 import ar.edu.fguerrero.da1.agendasalud.presentation.comun.fabricaViewModel
 
@@ -75,13 +77,9 @@ fun LoginScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text(
-                text = stringResource(R.string.app_name),
-                style = MaterialTheme.typography.displaySmall,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.primary,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth().semantics { heading() },
+            AgendaSaludLogo(
+                fontSize = 32.sp,
+                modifier = Modifier.semantics { heading() }
             )
             Spacer(Modifier.height(24.dp))
 
