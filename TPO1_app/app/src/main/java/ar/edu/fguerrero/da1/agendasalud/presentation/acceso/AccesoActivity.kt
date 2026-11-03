@@ -13,9 +13,9 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import ar.edu.fguerrero.da1.agendasalud.MainActivity
 import ar.edu.fguerrero.da1.agendasalud.core.security.protegerPantalla
 import ar.edu.fguerrero.da1.agendasalud.data.local.EstadoBase
+import ar.edu.fguerrero.da1.agendasalud.presentation.turnos.HoyActivity
 import ar.edu.fguerrero.da1.agendasalud.ui.theme.AgendaSaludTheme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.combine
@@ -24,12 +24,12 @@ import kotlinx.coroutines.launch
 
 /**
  * Activity de acceso (LAUNCHER): login o registro y apertura de la base cifrada.
- * Cuando los datos están listos le pasa el control a [MainActivity].
+ * Cuando los datos están listos abre [HoyActivity], la primera pantalla de la app.
  *
  * Se usa de dos formas:
- * - Al abrir la app: después del login abre MainActivity y se cierra (finish), así "Atrás" desde
+ * - Al abrir la app: después del login abre HoyActivity y se cierra (finish), así "Atrás" desde
  *   la app no vuelve al login.
- * - Encima de MainActivity ([pedirLogin]): cuando la sesión se bloqueó a los 2 minutos o Android
+ * - Encima de cualquier pantalla de la app ([pedirLogin]): cuando la sesión se bloqueó a los 2 minutos o Android
  *   mató el proceso. Después del login solo se cierra y el usuario vuelve a la pantalla en la que estaba.
  *
  * Extiende FragmentActivity porque BiometricPrompt (ingreso con huella) lo necesita.
@@ -61,10 +61,10 @@ class AccesoActivity : FragmentActivity() {
                     desbloqueada && estado == EstadoBase.Lista
                 }.first { it }
                 if (!sobreLaApp) {
-                    // CLEAR_TASK: si había otra MainActivity (por ejemplo, se abrió el enlace del mail
-                    // con la app abierta), se reemplaza en vez de quedar dos
+                    // CLEAR_TASK: si ya había pantallas de la app abiertas (por ejemplo, se abrió el
+                    // enlace del mail con la app abierta), se reemplazan en vez de quedar duplicadas
                     startActivity(
-                        Intent(this@AccesoActivity, MainActivity::class.java)
+                        Intent(this@AccesoActivity, HoyActivity::class.java)
                             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
                     )
                 }

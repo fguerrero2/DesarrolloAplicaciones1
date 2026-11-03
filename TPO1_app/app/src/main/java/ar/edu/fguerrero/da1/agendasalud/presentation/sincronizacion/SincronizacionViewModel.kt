@@ -20,8 +20,8 @@ import java.time.ZoneId
 import javax.inject.Inject
 
 /**
- * Vive mientras está abierta la app (a nivel de MainActivity). Al entrar programa la sincronización
- * según el calendario del servidor y anota cuándo cambian los datos locales.
+ * Uno por pantalla (Activity). Al abrirse programa la sincronización según el calendario del
+ * servidor (es idempotente) y anota cuándo cambian los datos locales (un solo observador a la vez).
  */
 @HiltViewModel
 class SincronizacionViewModel @Inject constructor(

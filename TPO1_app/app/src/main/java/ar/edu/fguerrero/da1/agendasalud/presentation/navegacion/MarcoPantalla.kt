@@ -28,59 +28,37 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavDestination
-import androidx.navigation.NavDestination.Companion.hasRoute
-import androidx.navigation.NavDestination.Companion.hierarchy
-import androidx.navigation.NavGraph.Companion.findStartDestination
-import androidx.navigation.NavHostController
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.navigation.compose.rememberNavController
-import ar.edu.fguerrero.da1.agendasalud.R
 import ar.edu.fguerrero.da1.agendasalud.presentation.comun.AccionesCuenta
 import ar.edu.fguerrero.da1.agendasalud.presentation.comun.LocalAccionesCuenta
 import ar.edu.fguerrero.da1.agendasalud.presentation.comun.LocalSnackbar
-import ar.edu.fguerrero.da1.agendasalud.presentation.pacientes.PacientesScreen
-import ar.edu.fguerrero.da1.agendasalud.presentation.pagos.CobrosScreen
 import ar.edu.fguerrero.da1.agendasalud.presentation.respaldo.RespaldoDialogos
 import ar.edu.fguerrero.da1.agendasalud.presentation.respaldo.RespaldoViewModel
 import ar.edu.fguerrero.da1.agendasalud.presentation.sincronizacion.SincronizacionViewModel
 import ar.edu.fguerrero.da1.agendasalud.presentation.sincronizacion.textoSincronizacion
-import ar.edu.fguerrero.da1.agendasalud.presentation.turnos.AgendaScreen
-import ar.edu.fguerrero.da1.agendasalud.presentation.turnos.HoyScreen
-import kotlin.reflect.KClass
-
-private data class Pestania(val ruta: Any, val clase: KClass<*>, val etiqueta: Int, val icono: Int)
-
-private val pestanias = listOf(
-    Pestania(RutaHoy, RutaHoy::class, R.string.nav_hoy, R.drawable.ic_hoy),
-    Pestania(RutaAgenda, RutaAgenda::class, R.string.nav_agenda, R.drawable.ic_agenda),
-    Pestania(RutaPacientes, RutaPacientes::class, R.string.nav_pacientes, R.drawable.ic_pacientes),
-    Pestania(RutaCobros, RutaCobros::class, R.string.nav_cobros, R.drawable.ic_cobros),
-)
 
 /** Ancho máximo del contenido: en tablets las tarjetas no se estiran de borde a borde. */
 private val ANCHO_MAXIMO_CONTENIDO = 720.dp
 
 /**
- * Las 4 pantallas de la app con su barra de navegación.
+ * Marco común de las 4 pantallas: barra de navegación, snackbar, menú ⋮ y diálogos de respaldo.
  *
  * Responsive: en un celular vertical la navegación va abajo (NavigationBar). En horizontal o en
- * tablet va al costado (NavigationRail), porque la altura es lo que falta y una barra inferior
- * le quitaría 80 dp a la agenda.
+ * tablet va al costado (NavigationRail), porque la altura es lo que falta.
  */
 @Composable
-fun AgendaSaludNavHost(alCerrarSesion: () -> Unit, modifier: Modifier = Modifier) {
-    val navController = rememberNavController()
-    val entradaActual by navController.currentBackStackEntryAsState()
-    val destino = entradaActual?.destination
+fun MarcoPantalla(
+    actual: Pestania,
+    alElegir: (Pestania) -> Unit,
+    alCerrarSesion: () -> Unit,
+    modifier: Modifier = Modifier,
+    contenido: @Composable () -> Unit,
+) {
     val snackbar = remember { SnackbarHostState() }
     // Tamaño real de la ventana (en pantalla dividida es menor que la pantalla del celular)
     val ventana = with(LocalDensity.current) { LocalWindowInfo.current.containerSize.let { DpSize(it.width.toDp(), it.height.toDp()) } }
     val navegacionLateral = ventana.width >= 600.dp || ventana.height < 480.dp
 
-    // A nivel de Activity: respaldo y sincronización se usan desde el menú de cualquiera de las 4 pantallas
+    // ViewModels de esta Activity para el menú ⋮ (se limpian con onCleared al cerrarla)
     val respaldo: RespaldoViewModel = hiltViewModel()
     val sincronizacion: SincronizacionViewModel = hiltViewModel()
     val estadoSync by sincronizacion.estado.collectAsStateWithLifecycle()
@@ -98,10 +76,10 @@ fun AgendaSaludNavHost(alCerrarSesion: () -> Unit, modifier: Modifier = Modifier
     Row(modifier.fillMaxSize()) {
         if (navegacionLateral) {
             NavigationRail {
-                pestanias.forEach { pestania ->
+                Pestania.entries.forEach { pestania ->
                     NavigationRailItem(
-                        selected = destino.esDe(pestania),
-                        onClick = { navController.irA(pestania) },
+                        selected = pestania == actual,
+                        onClick = { alElegir(pestania) },
                         icon = { Icon(painterResource(pestania.icono), contentDescription = null) },
                         label = { Text(stringResource(pestania.etiqueta)) },
                     )
@@ -114,10 +92,10 @@ fun AgendaSaludNavHost(alCerrarSesion: () -> Unit, modifier: Modifier = Modifier
             bottomBar = {
                 if (!navegacionLateral) {
                     NavigationBar {
-                        pestanias.forEach { pestania ->
+                        Pestania.entries.forEach { pestania ->
                             NavigationBarItem(
-                                selected = destino.esDe(pestania),
-                                onClick = { navController.irA(pestania) },
+                                selected = pestania == actual,
+                                onClick = { alElegir(pestania) },
                                 icon = { Icon(painterResource(pestania.icono), contentDescription = null) },
                                 label = { Text(stringResource(pestania.etiqueta)) },
                             )
@@ -128,30 +106,10 @@ fun AgendaSaludNavHost(alCerrarSesion: () -> Unit, modifier: Modifier = Modifier
         ) { padding ->
             CompositionLocalProvider(LocalSnackbar provides snackbar, LocalAccionesCuenta provides acciones) {
                 Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.TopCenter) {
-                    NavHost(
-                        navController,
-                        startDestination = RutaHoy,
-                        modifier = Modifier.widthIn(max = ANCHO_MAXIMO_CONTENIDO),
-                    ) {
-                        composable<RutaHoy> { HoyScreen() }
-                        composable<RutaAgenda> { AgendaScreen() }
-                        composable<RutaPacientes> { PacientesScreen() }
-                        composable<RutaCobros> { CobrosScreen() }
-                    }
+                    Box(Modifier.widthIn(max = ANCHO_MAXIMO_CONTENIDO)) { contenido() }
                 }
                 RespaldoDialogos(respaldo)
             }
         }
-    }
-}
-
-private fun NavDestination?.esDe(pestania: Pestania) = this?.hierarchy?.any { it.hasRoute(pestania.clase) } == true
-
-/** Cambia de pestaña conservando el estado de cada una (scroll, filtros) y sin apilar pantallas. */
-private fun NavHostController.irA(pestania: Pestania) {
-    navigate(pestania.ruta) {
-        popUpTo(graph.findStartDestination().id) { saveState = true }
-        launchSingleTop = true
-        restoreState = true
     }
 }

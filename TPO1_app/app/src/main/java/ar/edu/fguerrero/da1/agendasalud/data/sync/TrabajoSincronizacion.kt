@@ -173,6 +173,16 @@ class SincronizacionRepositoryImpl @Inject constructor(
     }
 
     override suspend fun registrarCambiosLocales() {
+        // Cada pantalla tiene su ViewModel: con un solo observador alcanza
+        if (!observando.compareAndSet(false, true)) return
+        try {
+            observarCambios()
+        } finally {
+            observando.set(false)
+        }
+    }
+
+    private suspend fun observarCambios() {
         // InvalidationTracker de Room avisa cada vez que cambia alguna de estas tablas.
         // drop(1): la primera emisión es el estado inicial, no un cambio.
         db.invalidationTracker.createFlow(*TABLAS).drop(1).collect {
@@ -183,6 +193,8 @@ class SincronizacionRepositoryImpl @Inject constructor(
     override fun sincronizarAhora() = programador.sincronizarPronto()
 
     private companion object {
+        /** Compartido entre instancias del repositorio (se crea uno por ViewModel). */
+        val observando = java.util.concurrent.atomic.AtomicBoolean(false)
         val TABLAS = arrayOf("pacientes", "turnos", "cambios_turno", "bloqueos", "cargos_sesion", "cobros")
     }
 }

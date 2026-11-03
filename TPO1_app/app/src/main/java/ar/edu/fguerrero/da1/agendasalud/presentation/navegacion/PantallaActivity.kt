@@ -1,13 +1,17 @@
-package ar.edu.fguerrero.da1.agendasalud
+package ar.edu.fguerrero.da1.agendasalud.presentation.navegacion
 
+import android.app.ActivityOptions
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.addCallback
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.Lifecycle
@@ -22,9 +26,7 @@ import ar.edu.fguerrero.da1.agendasalud.data.sync.ProgramadorSincronizacion
 import ar.edu.fguerrero.da1.agendasalud.di.AlcanceApp
 import ar.edu.fguerrero.da1.agendasalud.domain.repository.CuentaRepository
 import ar.edu.fguerrero.da1.agendasalud.presentation.acceso.AccesoActivity
-import ar.edu.fguerrero.da1.agendasalud.presentation.navegacion.AgendaSaludNavHost
 import ar.edu.fguerrero.da1.agendasalud.ui.theme.AgendaSaludTheme
-import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -32,11 +34,13 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
- * Activity principal: las 4 pantallas de la app (Hoy, Agenda, Pacientes, Cobros) con su barra de
- * navegación. Solo se llega acá desde [AccesoActivity] con la sesión desbloqueada y la base abierta.
+ * Base de las 4 Activities de la app (Hoy, Agenda, Pacientes y Cobros). Cada pantalla es una
+ * Activity con su propio ciclo de vida y su propio ViewModel; esta clase tiene lo que comparten:
+ * protección de pantalla, control de sesión, barra de navegación, menú ⋮ y cierre de sesión.
+ *
+ * Hilt inyecta los campos @Inject de esta clase en cada Activity hija (que lleva @AndroidEntryPoint).
  */
-@AndroidEntryPoint
-class MainActivity : ComponentActivity() {
+abstract class PantallaActivity : ComponentActivity() {
 
     @Inject lateinit var sesion: SesionSeguridad
     @Inject lateinit var base: BaseDatosCifrada
@@ -44,31 +48,42 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var programador: ProgramadorSincronizacion
     @Inject @AlcanceApp lateinit var alcanceApp: CoroutineScope
 
+    /** Qué pestaña es esta Activity (para marcarla en la barra). */
+    protected abstract val pestania: Pestania
+
+    /** Contenido propio de la pantalla. */
+    @Composable
+    protected abstract fun Contenido()
+
     private var cerrandoSesion = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        abiertas++
         protegerPantalla()
         enableEdgeToEdge()
 
-        // Cada vez que la pantalla vuelve a estar visible se verifica la sesión. Si se bloqueó
-        // (2 minutos en segundo plano) o Android mató el proceso, se pide login ENCIMA de esta
-        // Activity: al volver, el usuario sigue en la pantalla y el día en que estaba.
+        // "Atrás" desde cualquier pestaña sale de la app: las pestañas no son un historial
+        onBackPressedDispatcher.addCallback(this) { finishAffinity() }
+
+        // Cada vez que la pantalla vuelve a estar visible (onStart) se verifica la sesión. Si se
+        // bloqueó (2 minutos en segundo plano) o Android mató el proceso, se pide el login ENCIMA:
+        // al volver, el usuario sigue en esta pantalla. repeatOnLifecycle corta la recolección en onStop.
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 combine(sesion.desbloqueada, base.estado) { desbloqueada, estado -> desbloqueada && estado == EstadoBase.Lista }
                     .distinctUntilChanged()
-                    .collect { lista -> if (!lista && !cerrandoSesion) AccesoActivity.pedirLogin(this@MainActivity) }
+                    .collect { lista -> if (!lista && !cerrandoSesion) AccesoActivity.pedirLogin(this@PantallaActivity) }
             }
         }
 
         setContent {
             AgendaSaludTheme {
                 val estado by base.estado.collectAsStateWithLifecycle()
-                // Sin la base abierta no se crea ninguna pantalla (sus ViewModels la necesitan).
+                // Sin la base abierta no se crea la pantalla (su ViewModel la necesita).
                 // Mientras tanto se ve el fondo, tapado por el login.
                 if (estado == EstadoBase.Lista) {
-                    AgendaSaludNavHost(alCerrarSesion = ::cerrarSesion)
+                    MarcoPantalla(pestania, alElegir = ::irA, alCerrarSesion = ::cerrarSesion) { Contenido() }
                 } else {
                     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
                 }
@@ -77,8 +92,19 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
+     * Abre la Activity de otra pestaña. REORDER_TO_FRONT: si ya estaba abierta, la trae adelante tal
+     * como quedó (día, filtros, scroll) en vez de crear otra; así nunca hay dos de la misma.
+     * Sin animación, para que se sienta como cambiar de pestaña.
+     */
+    private fun irA(destino: Pestania) {
+        if (destino == pestania) return
+        val intent = Intent(this, destino.activity.java).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+        startActivity(intent, ActivityOptions.makeCustomAnimation(this, 0, 0).toBundle())
+    }
+
+    /**
      * Cierre de sesión: se cancela la sincronización programada, se borra el token del backend y
-     * se vuelve al login. Los datos locales no se borran (ver IMPLEMENTACION.md §16).
+     * se vuelve al login cerrando TODAS las Activities de la app (CLEAR_TASK).
      */
     private fun cerrarSesion() {
         cerrandoSesion = true
@@ -90,9 +116,15 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        // Al salir de verdad (cerrar sesión, "Atrás" o finishAffinity) se cierra la base: la clave
-        // deja de estar en memoria. En una rotación (isFinishing = false) la base sigue abierta.
-        // Para este momento los ViewModels ya se limpiaron (onCleared), así que nadie la está usando.
-        if (isFinishing) base.cerrar()
+        abiertas--
+        // Cuando se cierra la ÚLTIMA pantalla de la app (cerrar sesión o "Atrás") se cierra la base:
+        // la clave deja de estar en memoria. En una rotación isFinishing es false y la base sigue abierta.
+        // Para este momento el ViewModel de esta Activity ya se limpió (onCleared).
+        if (isFinishing && abiertas == 0) base.cerrar()
+    }
+
+    private companion object {
+        /** Cuántas pantallas de la app están creadas. Solo un número, nunca una referencia a una Activity. */
+        var abiertas = 0
     }
 }

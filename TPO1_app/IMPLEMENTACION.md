@@ -44,7 +44,7 @@ App Android nativa (Kotlin + Jetpack Compose) para que un profesional independie
 | Respaldo | Exportar un archivo cifrado con contraseña propia (a Drive, mail, pendrive) y restaurarlo en otro celular |
 | Cuenta y sincronización | Cuenta con email en el backend del equipo; copia cifrada de todos los datos según el calendario del servidor (cada 6 h, con wifi) o con *Sincronizar ahora*. En un celular nuevo se ingresa con la misma cuenta y los datos se descargan. Recuperación de contraseña por email |
 
-**Decisión de diseño principal:** son **5 pantallas** (Login + 4 pestañas) en **2 Activities**: `AccesoActivity` (login y apertura de la base) y `MainActivity` (las 4 pestañas). Todas las acciones (nuevo turno, cobro, reprogramar, ficha, respaldo, etc.) se resuelven con **diálogos y paneles inferiores** dentro de esas pantallas, sin navegar a pantallas nuevas.
+**Decisión de diseño principal:** son **5 pantallas, cada una en su propia Activity**: `AccesoActivity` (login), `HoyActivity`, `AgendaActivity`, `PacientesActivity` y `CobrosActivity`. Todas las acciones (nuevo turno, cobro, reprogramar, ficha, respaldo, etc.) se resuelven con **diálogos y paneles inferiores** dentro de esas pantallas, sin navegar a pantallas nuevas.
 
 ---
 
@@ -119,7 +119,7 @@ Capturas tomadas del emulador durante la prueba manual (`docs/capturas/`).
 - El botón **Registrarse** aparece **solo si todavía no hay usuario** en el celular (un único profesional por dispositivo).
 - Si hay huella o PIN configurado en el celular, aparece **"Ingresar con huella o PIN"** como atajo. Si la huella falla se muestra el motivo; si el usuario cancela, no.
 - Después del login se **abre la base cifrada** ("Abriendo tus datos…"). Si no se puede abrir (por ejemplo, Android invalidó la clave del Keystore al quitar el bloqueo de pantalla), en vez de cerrarse la app muestra **"No se pudieron abrir tus datos"** con *Reintentar*, *Empezar de cero* (borra todo, con confirmación) y *Cerrar sesión*.
-- Todo esto vive en **`AccesoActivity`**. Cuando la base está lista abre `MainActivity` y se cierra, así *Atrás* desde la app no vuelve al login.
+- Todo esto vive en **`AccesoActivity`**. Cuando la base está lista abre `HoyActivity` y se cierra, así *Atrás* desde la app no vuelve al login.
 - Archivos: `presentation/acceso/AccesoActivity.kt`, `AccesoViewModel.kt`, `LoginScreen.kt`, `LoginViewModel.kt`, `AperturaBaseScreen.kt`, `core/security/Credenciales.kt`.
 
 ### 3.2 Hoy (wireframe 02)
@@ -207,11 +207,11 @@ flowchart TD
         L[Login / Registro] --> AB[Abriendo datos / Error]
     end
     AB -->|base lista| N
-    subgraph N[MainActivity · barra inferior o lateral]
-        H[Hoy]
-        A[Agenda]
-        P[Pacientes]
-        C[Cobros]
+    subgraph N[Barra inferior o lateral · una Activity por pestaña]
+        H[HoyActivity]
+        A[AgendaActivity]
+        P[PacientesActivity]
+        C[CobrosActivity]
     end
     H & A -->|tocar hueco / + Nuevo turno| NT[Diálogo Nuevo turno]
     H & A -->|tocar turno| AT[Panel acciones del turno]
@@ -223,27 +223,30 @@ flowchart TD
     P -->|+ Nuevo paciente| NP[Diálogo paciente]
     C -->|Registrar cobro| RC
     N -->|menú ⋮| RS[Sincronizar ahora / Exportar / Restaurar respaldo]
-    N -->|Cerrar sesión: se cierra MainActivity y la base| L
+    N -->|Cerrar sesión: se cierran todas las Activities y la base| L
     N -.->|2 min en segundo plano o proceso muerto:<br/>login ENCIMA, al volver sigue donde estaba| L
 ```
 
-Rutas de Navigation Compose (tipadas, en `presentation/navegacion/Rutas.kt`): `RutaHoy`, `RutaAgenda`, `RutaPacientes`, `RutaCobros`. El Login no es una ruta: es otra Activity.
+**Una Activity por pantalla** (como pidió el profesor). Lo común está en la clase base `PantallaActivity` (`presentation/navegacion/`):
 
-**Por qué 2 Activities y no 1 ni 5:**
-
-- **Acceso** y **app** son responsabilidades distintas: una Activity no debería decidir a la vez si hay sesión, si la base abrió y qué pestaña mostrar.
-- Al cerrar sesión se **destruye `MainActivity`** con todos sus ViewModels y se cierra la base: no queda nada de los pacientes en memoria.
-- Si la sesión se bloquea (2 min) o Android mata el proceso, `MainActivity` pide el login **encima de sí misma** (`AccesoActivity.pedirLogin`). Después del login el usuario vuelve a la misma pestaña, el mismo día y la misma búsqueda.
-- Las 4 pestañas **no** son Activities separadas: compartir la barra de navegación entre Activities obliga a recrearla en cada cambio (transiciones bruscas) y a pasar estado entre ellas. Google recomienda una Activity con Navigation Compose para eso.
+- **Barra de navegación** (`MarcoPantalla`): cada botón abre la Activity de esa pestaña con `startActivity` y `FLAG_ACTIVITY_REORDER_TO_FRONT`. Si ya estaba abierta, la trae adelante **tal como quedó** (día, filtros, scroll), en vez de crear otra. Sin animación, para que se sienta como cambiar de pestaña.
+- **Cada Activity tiene su propio ViewModel** (`hiltViewModel()` usa el `ViewModelStore` de esa Activity), que se limpia con `onCleared()` cuando se cierra con `finish()`.
+- **Control de sesión**: con `repeatOnLifecycle(STARTED)`, cada vez que una pantalla vuelve a verse (`onStart`) se verifica la sesión; si se bloqueó, pide el login **encima** (`AccesoActivity.pedirLogin`).
+- **Menú ⋮ y cierre de sesión** comunes a las 4.
+- **Atrás** desde cualquier pestaña sale de la app (`finishAffinity`): las pestañas no son un historial.
+- **La base se cierra** cuando se destruye la **última** pantalla de la app con `isFinishing` (un contador; nunca se guarda una referencia a una Activity).
 
 | Situación | Qué pasa |
 |---|---|
-| Abrir la app | `AccesoActivity` (LAUNCHER) → login → abre la base → `MainActivity` → `finish()` del acceso |
-| Atrás desde Hoy | Sale de la app; `MainActivity.onDestroy` cierra la base |
-| Cerrar sesión | `FLAG_ACTIVITY_CLEAR_TASK`: queda solo `AccesoActivity`; la base se cierra |
-| 2 min en segundo plano | Al volver, `MainActivity` (en `onStart`) ve la sesión bloqueada y abre `AccesoActivity` encima; tras el login, `finish()` y sigue donde estaba |
-| Android mató el proceso | Se recrea `MainActivity` con su estado guardado, sin base abierta: muestra solo el fondo y pide el login encima; al volver, las pantallas recuperan el día, la búsqueda y los filtros (`SavedStateHandle`) |
+| Abrir la app | `AccesoActivity` (LAUNCHER) → login → abre la base → `HoyActivity` (con `CLEAR_TASK`) → `finish()` del acceso |
+| Tocar *Pacientes* en la barra | `startActivity(PacientesActivity, REORDER_TO_FRONT)`: Hoy pasa a `onStop` (queda viva, tapada), Pacientes a `onStart`/`onResume` |
+| Volver a *Hoy* | Hoy vuelve adelante con su estado; no se crea otra |
+| Atrás desde cualquier pestaña | `finishAffinity()`: se cierran todas; la última en destruirse cierra la base |
+| Cerrar sesión | `FLAG_ACTIVITY_CLEAR_TASK`: se cierran todas, queda solo `AccesoActivity`; la base se cierra |
+| 2 min en segundo plano | Al volver, la pantalla visible (en `onStart`) ve la sesión bloqueada y abre `AccesoActivity` encima; tras el login, `finish()` y sigue donde estaba |
+| Android mató el proceso | Se recrea la pantalla que estaba visible con su estado guardado, sin base abierta: muestra solo el fondo y pide el login encima; al volver recupera el día, la búsqueda y los filtros (`SavedStateHandle`) |
 | Atrás en el login pedido encima | `finishAffinity()`: sale de la app sin mostrar los datos |
+| Girar la pantalla | La Activity se recrea; el ViewModel sobrevive y los diálogos conservan lo escrito (`rememberSaveable`) |
 
 ---
 
@@ -331,7 +334,6 @@ Raíz del módulo: `TPO1_app/app/src/main/java/ar/edu/fguerrero/da1/agendasalud/
 ```
 agendasalud/
 ├── AgendaSaludApp.kt            Application @HiltAndroidApp; registra el bloqueo por inactividad
-├── MainActivity.kt              Activity de las 4 pestañas; pide login encima si la sesión se bloquea; cierra la base al salir
 │
 ├── di/
 │   └── ModuloApp.kt             Módulos de Hilt: seguridad, base, red (Retrofit), repositorios y casos de uso
@@ -342,7 +344,7 @@ agendasalud/
 │   │   ├── CifradoRespaldo.kt   AES-256-GCM con clave derivada de la contraseña del respaldo (JVM puro)
 │   │   ├── CifradorKeystore.kt  Cifra secretos chicos (token, clave de datos) con Android Keystore
 │   │   ├── ClavesCuenta.kt      KEK, sobre de la DEK, credencial y cifrado de la copia (compatible con el backend)
-│   │   ├── PantallaSegura.kt    FLAG_SECURE en release (lo llaman las dos Activities)
+│   │   ├── PantallaSegura.kt    FLAG_SECURE en release (lo llaman todas las Activities)
 │   │   ├── ClaveBaseDatos.kt    Genera la clave de SQLCipher y la guarda cifrada con Android Keystore
 │   │   ├── Credenciales.kt      Usuario + hash PBKDF2 de la contraseña (archivo en noBackupFilesDir)
 │   │   └── SesionSeguridad.kt   Estado desbloqueada/bloqueada, bloqueo a los 2 min, cerrar sesión
@@ -404,7 +406,7 @@ agendasalud/
 │
 ├── presentation/
 │   ├── acceso/
-│   │   ├── AccesoActivity.kt    Activity LAUNCHER: login → abrir base → MainActivity
+│   │   ├── AccesoActivity.kt    Activity LAUNCHER: login → abrir base → HoyActivity
 │   │   ├── AccesoViewModel.kt   Abre la base al desbloquear; reintentar / empezar de cero
 │   │   ├── LoginScreen.kt, LoginViewModel.kt
 │   │   └── AperturaBaseScreen.kt  "Abriendo tus datos…" y "No se pudieron abrir tus datos"
@@ -413,8 +415,9 @@ agendasalud/
 │   │   ├── EstadoUi.kt          sealed interface Cargando / Error / Contenido
 │   │   └── Componentes.kt       Encabezado + menú ⋮, BotonAncho, TarjetaTexto, CampoFecha, CampoHora, SelectorPaciente, IndicadorCarga, ErrorCarga
 │   ├── navegacion/
-│   │   ├── Rutas.kt             Rutas tipadas (kotlinx.serialization)
-│   │   └── AgendaSaludNavHost.kt  Barra inferior o lateral (responsive) + snackbar + NavHost + respaldo
+│   │   ├── PantallaActivity.kt  Base de las 4 Activities: sesión, barra, menú ⋮, cierre de sesión
+│   │   ├── MarcoPantalla.kt     Barra inferior o lateral (responsive) + snackbar + menú + respaldo
+│   │   └── Pestania.kt          Las 4 pestañas y su Activity
 │   ├── sincronizacion/
 │   │   └── SincronizacionViewModel.kt  Programa la sincronización y arma el texto de estado del menú
 │   ├── respaldo/
@@ -447,7 +450,7 @@ Otros archivos relevantes:
 | `../TPO1_backend/` | **Backend del equipo** (FastAPI + MongoDB, Vercel): ver su `README.md` y `PROPUESTA_ARQUITECTURA.md` |
 | `gradle/libs.versions.toml` | Catálogo de versiones de todas las dependencias |
 | `app/schemas/…/1.json` | Esquema exportado de Room v1 (base para migraciones futuras) |
-| `app/src/main/AndroidManifest.xml` | `AgendaSaludApp`, `allowBackup=false`, `AccesoActivity` (LAUNCHER, `singleTop`) y `MainActivity` (no exportada) |
+| `app/src/main/AndroidManifest.xml` | `AgendaSaludApp`, `allowBackup=false`, `AccesoActivity` (LAUNCHER, `singleTop`) y las 4 Activities de pantalla (no exportadas) |
 | `app/src/main/res/values/strings.xml` | **Todos los textos de la app** (en español), agrupados por pantalla |
 | `app/src/main/res/xml/backup_rules.xml`, `data_extraction_rules.xml` | Excluyen todo de backups y transferencias (RNF03) |
 | `app/src/main/res/drawable/ic_hoy.xml`, `ic_agenda.xml`, `ic_pacientes.xml`, `ic_cobros.xml` | Íconos de la barra inferior (vectores Material) |
@@ -546,7 +549,7 @@ Todas en `domain/rules/` (Kotlin puro, con tests).
 | Contraseña | Nunca se guarda: solo **hash PBKDF2-HMAC-SHA256** (120.000 iteraciones, salt aleatorio de 16 bytes), comparación en tiempo constante (`Credenciales`) |
 | Usuario | Uno por dispositivo; se normaliza (minúsculas, sin espacios) |
 | Bloqueo | Login al abrir; vuelve a pedirlo tras **2 minutos en segundo plano** (`SesionSeguridad` + `ProcessLifecycleOwner`) o al tocar **cerrar sesión** |
-| Cierre de sesión | Se destruye `MainActivity` (y sus ViewModels) y se **cierra la base**: la clave deja de estar en memoria. Además se cancela la sincronización y se borra el token del backend. Los datos locales **no se borran**: los cambios posteriores a la última sincronización se perderían |
+| Cierre de sesión | Se destruyen todas las Activities (y sus ViewModels) y se **cierra la base**: la clave deja de estar en memoria. Además se cancela la sincronización y se borra el token del backend. Los datos locales **no se borran**: los cambios posteriores a la última sincronización se perderían |
 | Cuenta en el servidor | La contraseña **no se envía**: se manda una credencial derivada (PBKDF2) que el backend guarda con bcrypt |
 | Datos en el servidor | Copia **cifrada en el celular** con AES-256-GCM; la DEK viaja envuelta con una KEK que solo se obtiene con la contraseña. El servidor no puede leer pacientes |
 | Token | JWT del backend, guardado cifrado con Keystore; se borra al cerrar sesión |
@@ -601,7 +604,7 @@ Todas en `domain/rules/` (Kotlin puro, con tests).
 | `core/security/CifradoRespaldoTest` (5) | JVM | Ida y vuelta con la misma contraseña, archivo sin datos en claro, rechazo con otra contraseña, archivo modificado o ajeno | idem |
 | `data/AgendaDatabaseTest` (3) | Instrumentado | Archivo cifrado, superposición en transacción, cobro RF04 y completar idempotente | `./gradlew :app:connectedDebugAndroidTest` |
 
-**Resultado actual:** 30/30 JVM ✅ · 3/3 instrumentados ✅ (corridos antes de Hilt y las 2 Activities; hay que volver a correrlos) · lint sin errores · build release con R8 ✅.
+**Resultado actual:** 37/37 JVM ✅ · instrumentados: 3, corridos antes de Hilt y de separar las Activities (**hay que volver a correrlos**) · lint sin errores · build release con R8 ✅.
 
 **Prueba manual en emulador** (Android 14, AVD liviano): registro, login correcto e incorrecto, alta y edición de paciente, turno desde hueco, completar + cobro parcial + total, error de monto, agenda de otro día, reprogramar + WhatsApp, bloqueo válido y rechazado, cerrar sesión. Sin crashes.
 
@@ -618,7 +621,6 @@ Definidas en `gradle/libs.versions.toml`.
 | KSP | 2.3.10 | Generación de código de Room |
 | Compose BOM / Material 3 | 2026.02.01 | UI |
 | material-icons-core | 1.7.8 | Íconos básicos (se reemplazó *extended*: el APK bajó de 29 a 22 MB) |
-| Navigation Compose | 2.10.1 | Navegación con rutas tipadas |
 | Lifecycle (ViewModel, runtime-compose, process) | 2.11.0 | ViewModels, `collectAsStateWithLifecycle`, bloqueo por inactividad |
 | Room (runtime, ktx, compiler) | 2.8.4 | Base de datos |
 | SQLCipher for Android | 4.19.0 | Cifrado de la base (licencia BSD-style; revisar atribución) |
@@ -629,7 +631,7 @@ Definidas en `gradle/libs.versions.toml`.
 | Retrofit + converter kotlinx-serialization | 3.0.0 | Cliente HTTP del backend |
 | WorkManager + androidx.hilt work | 2.12.0 / 1.3.0 | Sincronización en segundo plano con Hilt |
 | androidx.hilt lifecycle-viewmodel-compose | 1.3.0 | `hiltViewModel()` en Compose |
-| kotlinx-serialization-json | 1.9.0 | Rutas de navegación y formato del respaldo |
+| kotlinx-serialization-json | 1.9.0 | Formato de la copia de datos (respaldo y backend) y DTOs de Retrofit |
 | JUnit 4 / coroutines-test | 4.13.2 / 1.10.2 | Tests |
 
 ---
@@ -688,11 +690,11 @@ La consigna pide que toda modificación significativa pueda **explicarse y justi
 - **Texto sugerido** (nuevo requerimiento):
   > **RF06 Respaldo.** El profesional puede exportar todos sus datos a un archivo cifrado con una contraseña elegida por él y guardarlo donde prefiera (por ejemplo, en Google Drive). En otro dispositivo puede restaurarlo con esa contraseña; la restauración reemplaza los datos existentes. Si la contraseña se olvida, el respaldo no puede recuperarse.
 
-### 12.7 Dos Activities (Acceso + Principal)
+### 12.7 Una Activity por pantalla
 
-- **Antes:** una sola Activity mostraba el login o la app según un `when`.
-- **Ahora:** `AccesoActivity` (login, registro y apertura de la base) y `MainActivity` (las 4 pestañas). Ver la tabla de situaciones en §3.8.
-- **Por qué:** separar responsabilidades, que cerrar sesión destruya todo lo que tiene datos de pacientes en memoria, y que un bloqueo por inactividad no le haga perder al usuario la pantalla en la que estaba.
+- **Antes:** una sola Activity mostraba el login o la app, y las 4 pestañas eran destinos de Navigation Compose.
+- **Ahora:** 5 Activities: `AccesoActivity`, `HoyActivity`, `AgendaActivity`, `PacientesActivity` y `CobrosActivity`. La barra las abre con `startActivity`. Ver la tabla de situaciones en §3.9.
+- **Por qué:** lo pidió el profesor (no todo en una Activity), y así cada pantalla tiene su propio ciclo de vida y su propio ViewModel, como se ve en la teoría (`onStop` cuando otra Activity la tapa, `onCleared` al cerrarla). Cerrar sesión destruye todo lo que tiene datos de pacientes en memoria, y un bloqueo por inactividad no hace perder la pantalla en la que se estaba.
 
 ### 12.8 Integración con el backend del equipo
 
@@ -798,7 +800,7 @@ Cosas **no probadas todavía** o que conviene revisar antes de la entrega:
 | Agregar una regla de negocio | `domain/rules/` + test en `app/src/test/…/domain/rules/` |
 | Agregar un campo a una tabla | `data/local/entity/Entidades.kt` + `Mapeos.kt` + modelo en `domain/model/` + **subir versión y migración** en `AgendaDatabase.kt` |
 | Agregar una consulta | `data/local/dao/Daos.kt` → interfaz en `domain/repository/Repositorios.kt` → `*RepositoryImpl.kt` |
-| Agregar una pantalla/pestaña | Ruta en `Rutas.kt`, `composable<…>` y pestaña en `AgendaSaludNavHost.kt` |
+| Agregar una pantalla/pestaña | Una Activity que herede de `PantallaActivity` (con `@AndroidEntryPoint`), su entrada en `Pestania.kt` y en `AndroidManifest.xml` |
 | Agregar un diálogo a una pantalla | Estado `var x by rememberSaveable` en la pantalla (guardar ids, no objetos) + composable del diálogo (ver `TurnoDialogos.kt`) |
 | Agregar un ViewModel | `@HiltViewModel class X @Inject constructor(...)` y en la pantalla `viewModel: X = hiltViewModel()` |
 | Agregar una dependencia inyectable | `di/ModuloApp.kt` (`@Provides` o `@Binds`) |
@@ -833,7 +835,7 @@ Cada tema de los apuntes y dónde se aplica, para la defensa.
 | **DataStore** en lugar de SharedPreferences | `PreferenciasRepositoryImpl` (duración e importe sugeridos), con corrutinas y `Flow` |
 | **Almacenamiento interno privado** | `noBackupFilesDir`: credenciales y clave de la base. Nunca almacenamiento externo |
 | **SAF para archivos compartibles** | El respaldo usa `CreateDocument` / `OpenDocument`: elige el usuario, sin permisos de almacenamiento |
-| **Política de cierre de sesión** | Se destruye `MainActivity` y se **cierra la base** (`BaseDatosCifrada.cerrar`). Se borra el JWT y la credencial en memoria, y se cancela la sincronización. Los datos locales **no se purgan** a propósito: lo cargado después de la última sincronización solo está en el celular |
+| **Política de cierre de sesión** | Se destruyen todas las Activities (`CLEAR_TASK`) y se **cierra la base** (`BaseDatosCifrada.cerrar`). Se borra el JWT y la credencial en memoria, y se cancela la sincronización. Los datos locales **no se purgan** a propósito: lo cargado después de la última sincronización solo está en el celular |
 | **SSOT + Offline-First** | Room es la única fuente de verdad; el backend se sincroniza en segundo plano (`Sincronizador`) sin que ninguna pantalla espere a la red |
 | **Retrofit** | `data/remoto/ApiAgendaSalud.kt` con funciones `suspend`, OkHttp con `Interceptor` para el JWT |
 | **Trabajo en segundo plano** | WorkManager (`@HiltWorker`) con la política del servidor: intervalo, red sin costo, batería no baja, reintentos y franja horaria |
@@ -870,7 +872,8 @@ Cada tema de los apuntes y dónde se aplica, para la defensa.
 
 | Tema | En el proyecto |
 |---|---|
-| **Simetría** | Observador de proceso registrado en `AgendaSaludApp.onCreate` (vive lo mismo que el proceso). La base se abre tras el login y se cierra en `MainActivity.onDestroy` cuando `isFinishing` |
+| **Simetría** | Observador de proceso registrado en `AgendaSaludApp.onCreate` (vive lo mismo que el proceso). La base se abre tras el login y se cierra en el `onDestroy` de la última pantalla cuando `isFinishing` |
+| **Visibilidad y foco (`onPause` vs `onStop`)** | Cambiar de pestaña tapa la Activity anterior al 100 %: pasa a `onStop`, y el control de sesión y las consultas (`WhileSubscribed`) se pausan. El selector de archivos del respaldo también es otra Activity (otra app) y lleva a `onStop`. Los diálogos de Compose (nuevo turno, cobro) son ventanas **de la misma Activity**: no llaman a `onPause` ni a `onStop` (el caso de la teoría es una Activity con tema de diálogo encima) |
 | **Persistir en `onStop`, no en `onDestroy`** | El momento de pasar a segundo plano se registra en `onStop` (`SesionSeguridad`). Los datos se guardan en el momento de cada acción, nunca al cerrar |
 | **No bloquear `onPause`** | No se usa `onPause` |
 | **Sin fugas de Context** | Ningún singleton guarda una Activity: Hilt inyecta `@ApplicationContext` |
