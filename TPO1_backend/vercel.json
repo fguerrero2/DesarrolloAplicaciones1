@@ -14,6 +14,9 @@
       "src": "/(.*)",
       "dest": "api/index.py"
     }
-  ]
+  ],
+  "git": {
+    "ignoreCommand": "bash vercel-ignore-build.sh"
+  }
 }
 
