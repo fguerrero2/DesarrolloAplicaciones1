@@ -25,6 +25,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -64,12 +65,15 @@ fun NuevoTurnoDialog(
     alGuardar: (pacienteId: Long, inicio: LocalDateTime, duracion: Int, importe: Long, alTerminar: (ErrorDominio?) -> Unit) -> Unit,
     alCerrar: () -> Unit,
 ) {
-    var paciente by remember { mutableStateOf(pacientes.singleOrNull()) }
-    var fecha by remember { mutableStateOf(fechaInicial) }
-    var hora by remember { mutableStateOf(horaInicial) }
-    var duracion by remember { mutableStateOf(duracionInicial.toString()) }
-    var importe by remember { mutableStateOf(if (importeInicial > 0) pesosParaEditar(importeInicial) else "") }
-    var error by remember { mutableStateOf<Int?>(null) }
+    // rememberSaveable: lo cargado no se pierde al girar la pantalla. Del paciente se guarda el id
+    // (entra en un Bundle) y el objeto se busca en la lista.
+    var pacienteId by rememberSaveable { mutableStateOf(pacientes.singleOrNull()?.id) }
+    val paciente = pacientes.firstOrNull { it.id == pacienteId }
+    var fecha by rememberSaveable { mutableStateOf(fechaInicial) }
+    var hora by rememberSaveable { mutableStateOf(horaInicial) }
+    var duracion by rememberSaveable { mutableStateOf(duracionInicial.toString()) }
+    var importe by rememberSaveable { mutableStateOf(if (importeInicial > 0) pesosParaEditar(importeInicial) else "") }
+    var error by rememberSaveable { mutableStateOf<Int?>(null) }
     var guardando by remember { mutableStateOf(false) }
 
     AlertDialog(
@@ -81,7 +85,7 @@ fun NuevoTurnoDialog(
                 return@AlertDialog
             }
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                SelectorPaciente(pacientes, paciente) { paciente = it }
+                SelectorPaciente(pacientes, paciente) { pacienteId = it.id }
                 CampoFecha(stringResource(R.string.campo_fecha), fecha, soloDiasDeAtencion = true) { fecha = it }
                 CampoHora(stringResource(R.string.campo_hora), hora) { hora = it }
                 OutlinedTextField(
@@ -180,9 +184,9 @@ fun ReprogramarDialog(
     alGuardar: (LocalDateTime, alTerminar: (ErrorDominio?) -> Unit) -> Unit,
     alCerrar: () -> Unit,
 ) {
-    var fecha by remember { mutableStateOf(item.turno.inicio.toLocalDate()) }
-    var hora by remember { mutableStateOf(item.turno.inicio.toLocalTime()) }
-    var error by remember { mutableStateOf<Int?>(null) }
+    var fecha by rememberSaveable { mutableStateOf(item.turno.inicio.toLocalDate()) }
+    var hora by rememberSaveable { mutableStateOf(item.turno.inicio.toLocalTime()) }
+    var error by rememberSaveable { mutableStateOf<Int?>(null) }
     var guardando by remember { mutableStateOf(false) }
 
     AlertDialog(
@@ -212,7 +216,7 @@ fun ReprogramarDialog(
 /** Wireframe 20 · Cancelar turno. */
 @Composable
 fun CancelarTurnoDialog(item: TurnoConPaciente, alConfirmar: (motivo: String) -> Unit, alCerrar: () -> Unit) {
-    var motivo by remember { mutableStateOf("") }
+    var motivo by rememberSaveable { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = alCerrar,
         title = { Text(stringResource(R.string.turno_cancelar)) },
@@ -239,8 +243,8 @@ fun CancelarTurnoDialog(item: TurnoConPaciente, alConfirmar: (motivo: String) ->
 @Composable
 fun WhatsAppDialog(borrador: BorradorWhatsApp, alCerrar: () -> Unit) {
     val context = LocalContext.current
-    var texto by remember { mutableStateOf(borrador.texto) }
-    var aviso by remember { mutableStateOf<Int?>(null) }
+    var texto by rememberSaveable { mutableStateOf(borrador.texto) }
+    var aviso by rememberSaveable { mutableStateOf<Int?>(null) }
     val numero = borrador.telefono?.let(::numeroWhatsApp)
 
     AlertDialog(

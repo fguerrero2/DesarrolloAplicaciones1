@@ -9,8 +9,9 @@ import ar.edu.fguerrero.da1.agendasalud.domain.model.Resultado
 import ar.edu.fguerrero.da1.agendasalud.domain.repository.PacienteRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import javax.inject.Inject
 
-class PacienteRepositoryImpl(private val db: AgendaDatabase) : PacienteRepository {
+class PacienteRepositoryImpl @Inject constructor(private val db: AgendaDatabase) : PacienteRepository {
     private val dao = db.pacienteDao()
 
     override fun observar(busqueda: String, incluirInactivos: Boolean): Flow<List<Paciente>> =

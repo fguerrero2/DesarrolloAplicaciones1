@@ -12,8 +12,9 @@ import ar.edu.fguerrero.da1.agendasalud.domain.rules.ReglasCobro
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.time.LocalDate
+import javax.inject.Inject
 
-class CobroRepositoryImpl(private val db: AgendaDatabase) : CobroRepository {
+class CobroRepositoryImpl @Inject constructor(private val db: AgendaDatabase) : CobroRepository {
     private val dao = db.cobroDao()
 
     override fun observarPendientes(): Flow<List<CargoPendiente>> =

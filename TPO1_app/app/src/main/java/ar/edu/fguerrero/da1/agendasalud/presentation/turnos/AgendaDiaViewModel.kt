@@ -1,6 +1,6 @@
 package ar.edu.fguerrero.da1.agendasalud.presentation.turnos
 
-import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.SavedStateHandle
 import ar.edu.fguerrero.da1.agendasalud.R
 import ar.edu.fguerrero.da1.agendasalud.core.util.formatearFechaLarga
 import ar.edu.fguerrero.da1.agendasalud.core.util.formatearHora
@@ -23,24 +23,24 @@ import ar.edu.fguerrero.da1.agendasalud.domain.usecase.CompletarSesion
 import ar.edu.fguerrero.da1.agendasalud.domain.usecase.RegistrarCobro
 import ar.edu.fguerrero.da1.agendasalud.domain.usecase.ReservarTurno
 import ar.edu.fguerrero.da1.agendasalud.presentation.comun.Aviso
+import ar.edu.fguerrero.da1.agendasalud.presentation.comun.EstadoUi
 import ar.edu.fguerrero.da1.agendasalud.presentation.comun.ViewModelConAvisos
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.stateIn
 import java.time.LocalDate
 import java.time.LocalDateTime
+import javax.inject.Inject
 
 /** Saldo pendiente de un paciente con turno en el día (wireframe 02: "Pendiente de Ana: $12.000"). */
 data class SaldoDelDia(val pacienteId: Long, val nombrePaciente: String, val saldoCentavos: Long)
 
-data class AgendaDiaUiState(
-    val fecha: LocalDate = LocalDate.now(),
-    val cargando: Boolean = true,
+/** Datos del día ya cargados. La fecha va aparte ([AgendaDiaViewModel.fecha]) porque se muestra aun cargando. */
+data class DatosAgendaDia(
     val items: List<ItemAgenda> = emptyList(),
     val pacientesActivos: List<Paciente> = emptyList(),
     val saldosDelDia: List<SaldoDelDia> = emptyList(),
@@ -55,9 +55,13 @@ data class AgendaDiaUiState(
 /** Borrador de WhatsApp tras reprogramar (RF05). El usuario lo revisa y lo envía en WhatsApp. */
 data class BorradorWhatsApp(val telefono: String?, val texto: String)
 
-/** Estado y acciones de un día de agenda. Lo usan las pantallas Hoy y Agenda. */
+/**
+ * Estado y acciones de un día de agenda. Lo usan las pantallas Hoy y Agenda, cada una con su
+ * propia instancia (Hilt la ata a la entrada de navegación de cada pantalla).
+ */
 @OptIn(ExperimentalCoroutinesApi::class)
-class AgendaDiaViewModel(
+@HiltViewModel
+class AgendaDiaViewModel @Inject constructor(
     private val turnos: TurnoRepository,
     private val bloqueos: BloqueoRepository,
     private val pacientes: PacienteRepository,
@@ -66,9 +70,17 @@ class AgendaDiaViewModel(
     private val reservarTurno: ReservarTurno,
     private val completarSesion: CompletarSesion,
     private val registrarCobro: RegistrarCobro,
+    private val estadoGuardado: SavedStateHandle,
 ) : ViewModelConAvisos() {
 
-    private val fecha = MutableStateFlow(LocalDate.now())
+    /**
+     * Día que se está mirando. Al girar la pantalla lo conserva el ViewModel; si Android mata el
+     * proceso en segundo plano, lo recupera el SavedStateHandle (LocalDate es Serializable).
+     */
+    val fecha: StateFlow<LocalDate> = estadoGuardado.getStateFlow(CLAVE_FECHA, LocalDate.now())
+
+    /** Hora usada para no ofrecer huecos que ya empezaron. Se actualiza cada vez que la pantalla vuelve a verse. */
+    private val ahora = MutableStateFlow(LocalDateTime.now())
 
     private val _cobroEnCurso = MutableStateFlow<CargoPendiente?>(null)
     val cobroEnCurso: StateFlow<CargoPendiente?> = _cobroEnCurso.asStateFlow()
@@ -83,35 +95,47 @@ class AgendaDiaViewModel(
         saldos to cargos.associate { it.turnoId to it.pendienteCentavos }
     }
 
-    val uiState: StateFlow<AgendaDiaUiState> = fecha.flatMapLatest { dia ->
-        val desde = dia.atStartOfDay()
-        val hasta = dia.plusDays(1).atStartOfDay()
-        combine(
-            turnos.observarEntre(desde, hasta),
-            bloqueos.observarEntre(desde, hasta),
-            pacientes.observar(),
-            saldosYPendientes,
-            valoresPredeterminados,
-        ) { turnosDia, bloqueosDia, activos, (saldos, pendientes), (duracion, importe) ->
-            AgendaDiaUiState(
-                fecha = dia,
-                cargando = false,
-                items = ArmadoAgenda.armar(dia, turnosDia, bloqueosDia, ahora = LocalDateTime.now()),
-                pacientesActivos = activos,
-                saldosDelDia = turnosDia
-                    .distinctBy { it.turno.pacienteId }
-                    .mapNotNull { t -> saldos[t.turno.pacienteId]?.takeIf { it > 0 }?.let { SaldoDelDia(t.turno.pacienteId, t.nombrePaciente, it) } },
-                pendientePorTurno = pendientes,
-                diaDeAtencion = HorarioAtencion.franja(dia) != null,
-                duracionPredeterminada = duracion,
-                importePredeterminado = importe,
-            )
+    private val valoresYHora = combine(valoresPredeterminados, ahora) { valores, momento -> valores to momento }
+
+    // flatMapLatest: al cambiar de día se cancela la consulta del día anterior
+    val uiState: StateFlow<EstadoUi<DatosAgendaDia>> = estadoUi {
+        fecha.flatMapLatest { dia ->
+            val desde = dia.atStartOfDay()
+            val hasta = dia.plusDays(1).atStartOfDay()
+            combine(
+                turnos.observarEntre(desde, hasta),
+                bloqueos.observarEntre(desde, hasta),
+                pacientes.observar(),
+                saldosYPendientes,
+                valoresYHora,
+            ) { turnosDia, bloqueosDia, activos, (saldos, pendientes), (valores, momento) ->
+                val (duracion, importe) = valores
+                DatosAgendaDia(
+                    items = ArmadoAgenda.armar(dia, turnosDia, bloqueosDia, ahora = momento),
+                    pacientesActivos = activos,
+                    saldosDelDia = turnosDia
+                        .distinctBy { it.turno.pacienteId }
+                        .mapNotNull { t -> saldos[t.turno.pacienteId]?.takeIf { it > 0 }?.let { SaldoDelDia(t.turno.pacienteId, t.nombrePaciente, it) } },
+                    pendientePorTurno = pendientes,
+                    diaDeAtencion = HorarioAtencion.franja(dia) != null,
+                    duracionPredeterminada = duracion,
+                    importePredeterminado = importe,
+                )
+            }
         }
-    }.avisarSiFalla(AgendaDiaUiState(cargando = false))
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AgendaDiaUiState())
+    }
 
     fun cambiarFecha(nueva: LocalDate) {
-        fecha.value = nueva
+        estadoGuardado[CLAVE_FECHA] = nueva
+    }
+
+    /**
+     * La pantalla volvió a ser visible (onStart). Se refresca la hora para ocultar huecos que ya
+     * pasaron y, en Hoy, se salta al día actual por si la app quedó abierta de un día para otro.
+     */
+    fun alMostrarse(irAHoy: Boolean) {
+        ahora.value = LocalDateTime.now()
+        if (irAHoy) cambiarFecha(LocalDate.now())
     }
 
     fun reservar(
@@ -202,6 +226,8 @@ class AgendaDiaViewModel(
     }
 
     companion object {
+        private const val CLAVE_FECHA = "fecha"
+
         fun avisoCobro(pendienteRestante: Long): Aviso =
             if (pendienteRestante > 0) Aviso.Exito(R.string.aviso_cobro_parcial, listOf(formatearPesos(pendienteRestante)))
             else Aviso.Exito(R.string.aviso_cobro_total)
