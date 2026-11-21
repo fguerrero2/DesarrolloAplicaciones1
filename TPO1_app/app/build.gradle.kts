@@ -1,9 +1,20 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
+}
+
+// URL del backend desplegado en Vercel.
+val urlVercel = "https://agendasalud-backend.vercel.app/"
+
+// local.properties no se versiona: cada uno elige ahí si usa el backend local.
+val localProps = Properties().apply {
+    val archivo = rootProject.file("local.properties")
+    if (archivo.exists()) archivo.inputStream().use { load(it) }
 }
 
 android {
@@ -24,13 +35,20 @@ android {
 
     buildTypes {
         debug {
-            // Backend de Francisco (TPO1_backend, FastAPI) corriendo en la compu con Docker o uvicorn
-            // en el puerto 8000. 10.0.2.2 es la compu vista desde el emulador.
-            buildConfigField("String", "URL_SERVIDOR", "\"http://10.0.2.2:8000/\"")
+            // Por defecto, el backend desplegado en Vercel.
+            // Para usar el backend local (TPO1_backend con Docker o uvicorn en el puerto 8000),
+            // agregar `backendLocal=true` en local.properties o compilar con -PbackendLocal=true.
+            // 10.0.2.2 es la compu vista desde el emulador.
+            val usarLocal = (project.findProperty("backendLocal") as String?
+                ?: localProps.getProperty("backendLocal")) == "true"
+            buildConfigField(
+                "String", "URL_SERVIDOR",
+                if (usarLocal) "\"http://10.0.2.2:8000/\"" else "\"$urlVercel\""
+            )
         }
         release {
-            // URL del deploy en Vercel (siempre HTTPS). Reemplazar por la definitiva.
-            buildConfigField("String", "URL_SERVIDOR", "\"https://agendasalud-backend.vercel.app/\"")
+            // URL del deploy en Vercel (siempre HTTPS).
+            buildConfigField("String", "URL_SERVIDOR", "\"$urlVercel\"")
             // R8: reduce, optimiza y ofusca el código, y quita los recursos que no se usan.
             // En debug queda desactivado para compilar más rápido y poder depurar.
             optimization {
