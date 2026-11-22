@@ -604,8 +604,12 @@ Todas en `domain/rules/` (Kotlin puro, con tests).
 | `core/security/CompatibilidadBackendTest` (2) | JVM | La app abre un sobre y una copia generados por `CryptoService` (Python) del backend | idem |
 | `core/security/CifradoRespaldoTest` (5) | JVM | Ida y vuelta con la misma contraseña, archivo sin datos en claro, rechazo con otra contraseña, archivo modificado o ajeno | idem |
 | `data/AgendaDatabaseTest` (3) | Instrumentado | Archivo cifrado, superposición en transacción, cobro RF04 y completar idempotente | `./gradlew :app:connectedDebugAndroidTest` |
+| `domain/usecase/CasosDeUsoTest` (21) | JVM + MockRepository | CP-01 a CP-21: reservar (paciente inexistente/inactivo, superposición, contiguos, fuera de horario, bloqueos), cancelar libera el horario, reprogramar conserva la fecha original, completar sin duplicar el cargo, cobro parcial y total, montos inválidos, falla de guardado | `./gradlew :app:testDebugUnitTest` |
+| `presentation/ViewModelsConMockTest` (14) | JVM + MockRepository | VM-01 a VM-14: lo que muestran Agenda/Hoy, Pacientes y Cobros (EstadoUi y avisos) al reservar, completar, cobrar, reprogramar (borrador de WhatsApp), buscar con debounce, desactivar, filtrar pendientes; error de lectura con reintento y error de guardado | idem |
 
-**Resultado actual:** 37/37 JVM ✅ · instrumentados: 3, corridos antes de Hilt y de separar las Activities (**hay que volver a correrlos**) · lint sin errores · build release con R8 ✅.
+**Resultado actual:** 72/72 JVM ✅ · instrumentados: 3, corridos antes de Hilt y de separar las Activities (**hay que volver a correrlos**) · lint sin errores · build release con R8 ✅.
+
+**MockRepository** (`app/src/test/…/mock/MockRepository.kt`): implementa en memoria las interfaces de `domain/repository` (pacientes, turnos, bloqueos, cobros y preferencias) aplicando las mismas reglas que los repositorios de Room. Permite probar casos de uso y ViewModels en la JVM, en segundos y sin emulador. Con `fallarEscrituras` y `fallarLecturas` simula errores de la base, y `operaciones` registra qué escrituras recibió. Para comprobar que los tests detectan modificaciones, se cambió el cierre del horario de 18 a 19 h y fallaron 5.
 
 **Prueba manual en emulador** (Android 14, AVD liviano): registro, login correcto e incorrecto, alta y edición de paciente, turno desde hueco, completar + cobro parcial + total, error de monto, agenda de otro día, reprogramar + WhatsApp, bloqueo válido y rechazado, cerrar sesión. Sin crashes.
 

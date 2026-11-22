@@ -129,6 +129,27 @@ Esta opción levanta automáticamente la API de FastAPI y una base de datos Mong
 
 ---
 
+### 4.3 Tests con MockRepository (sin MongoDB)
+`tests/mock_repository.py` reemplaza la base de datos de MongoDB por colecciones en memoria. Los tests pisan la dependencia `get_database` (`app.dependency_overrides`), así que la API corre completa (validación, JWT, hashing, aislamiento por tenant) sin Mongo ni red.
+
+```bash
+cd TPO1_backend
+python3 -m venv venv && source venv/bin/activate
+pip install -r requirements-dev.txt
+pytest
+```
+
+`tests/test_api_con_mock.py` tiene 20 casos (BE-01 a BE-20):
+- **Contrato con la app:** rutas que usa `ApiAgendaSalud.kt` y calendario de sincronización.
+- **Registro y login:** emails en minúsculas, email repetido (400), datos inválidos (422), credenciales incorrectas (401) y cuenta inactiva (403).
+- **Recuperación de contraseña:** no revela si el email existe; restablecer cambia la contraseña y el sobre de la clave; un token inválido devuelve 400.
+- **Sincronización:** push/pull de la última versión con historial, aislamiento entre tenants, token ausente, inválido o de un usuario borrado, y payload incompleto.
+- **Falla de la base:** con `db.fallar = True` simula que Mongo se cae; la API responde 500 sin colgarse.
+
+`test_e2e_local.py` sigue sirviendo para probar contra un servidor real (Docker o Vercel).
+
+---
+
 ## 5. Despliegue en Vercel (Un Solo Deploy)
 
 ### Opción A: Mediante Vercel CLI
