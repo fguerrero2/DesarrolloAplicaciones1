@@ -276,9 +276,7 @@
     <string name="guia_introduccion">Un resumen rápido para empezar. Podés volver a verlo cuando quieras desde ⋮ → ¿Cómo funciona?</string>
     <string name="guia_empezar">Empezar</string>
     <string name="ayuda_pasos_titulo">Primeros pasos</string>
-    <string name="ayuda_pasos">1. Cargá tus pacientes en la pestaña Pacientes.
-2. En Hoy o Agenda, tocá un horario disponible para dar un turno.
-3. Al terminar la sesión, tocá el turno → Completar sesión y registrá el cobro.</string>
+    <string name="ayuda_pasos">1. Cargá tus pacientes en la pestaña Pacientes.\n2. En Hoy o Agenda, tocá un horario disponible para dar un turno.\n3. Al terminar la sesión, tocá el turno → Completar sesión y registrá el cobro.</string>
     <string name="ayuda_turnos_titulo">Turnos</string>
     <string name="ayuda_turnos">Atendés de lunes a viernes de 9 a 18 y los sábados de 9 a 12. Tocá un turno para completarlo, reprogramarlo o cancelarlo. Si te equivocás, la mayoría de las acciones se pueden deshacer desde el aviso que aparece abajo.</string>
     <string name="ayuda_cobros_titulo">Cobros y saldos</string>

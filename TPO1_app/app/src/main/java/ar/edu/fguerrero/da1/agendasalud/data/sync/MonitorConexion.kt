@@ -17,27 +17,39 @@ import javax.inject.Singleton
 /**
  * Avisa si el celular tiene internet, para mostrar el modo sin conexión (Nielsen H1). Solo observa
  * mientras alguna pantalla está visible: el callback se registra al recolectar y se quita al dejar de hacerlo.
+ *
+ * Se lleva la cuenta de las redes con internet validado a partir de los propios callbacks. No se
+ * consulta `activeNetwork` dentro de onLost: en ese momento todavía puede devolver la red que se está
+ * perdiendo, y la app seguiría creyendo que hay conexión (por ejemplo, al activar el modo avión).
  */
 @Singleton
 class MonitorConexion @Inject constructor(@param:ApplicationContext private val context: Context) {
 
     val conectado: Flow<Boolean> = callbackFlow {
         val gestor = context.getSystemService(ConnectivityManager::class.java)
-        fun hayInternet(): Boolean = gestor.activeNetwork
-            ?.let(gestor::getNetworkCapabilities)
-            ?.run { hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) && hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) }
-            ?: false
+        val conInternet = mutableSetOf<Network>()
+
+        fun tieneInternet(capacidades: NetworkCapabilities?) = capacidades != null &&
+            capacidades.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+            capacidades.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
 
         val callback = object : ConnectivityManager.NetworkCallback() {
             override fun onCapabilitiesChanged(network: Network, capacidades: NetworkCapabilities) {
-                trySend(hayInternet())
+                synchronized(conInternet) {
+                    if (tieneInternet(capacidades)) conInternet.add(network) else conInternet.remove(network)
+                    trySend(conInternet.isNotEmpty())
+                }
             }
 
             override fun onLost(network: Network) {
-                trySend(hayInternet())
+                synchronized(conInternet) {
+                    conInternet.remove(network)
+                    trySend(conInternet.isNotEmpty())
+                }
             }
         }
-        trySend(hayInternet())
+        // Valor inicial; después mandan los callbacks
+        trySend(tieneInternet(gestor.activeNetwork?.let(gestor::getNetworkCapabilities)))
         val pedido = NetworkRequest.Builder().addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET).build()
         gestor.registerNetworkCallback(pedido, callback)
         awaitClose { gestor.unregisterNetworkCallback(callback) }
