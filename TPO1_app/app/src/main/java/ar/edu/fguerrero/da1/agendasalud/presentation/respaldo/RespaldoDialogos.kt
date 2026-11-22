@@ -8,12 +8,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -25,12 +23,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ar.edu.fguerrero.da1.agendasalud.R
 import ar.edu.fguerrero.da1.agendasalud.domain.model.ErrorDominio
+import ar.edu.fguerrero.da1.agendasalud.presentation.comun.CampoContrasenia
 import ar.edu.fguerrero.da1.agendasalud.presentation.comun.MostrarAvisos
 import ar.edu.fguerrero.da1.agendasalud.presentation.comun.TextoError
 import ar.edu.fguerrero.da1.agendasalud.presentation.comun.mensaje
@@ -81,7 +78,7 @@ fun RespaldoDialogos(viewModel: RespaldoViewModel) {
             confirmButton = {
                 TextButton(onClick = viewModel::confirmarRestaurar) { Text(stringResource(R.string.respaldo_elegir_archivo)) }
             },
-            dismissButton = { TextButton(onClick = viewModel::cancelar) { Text(stringResource(R.string.cancelar)) } },
+            dismissButton = { TextButton(onClick = viewModel::cancelar) { Text(stringResource(R.string.volver)) } },
         )
         is PasoRespaldo.ClaveParaRestaurar -> ClaveRestaurarDialog(
             alConfirmar = viewModel::restaurar,
@@ -123,7 +120,7 @@ private fun ClaveExportarDialog(alConfirmar: (clave: String, confirmacion: Strin
                 Text(stringResource(R.string.respaldo_elegir_destino))
             }
         },
-        dismissButton = { TextButton(onClick = alCerrar) { Text(stringResource(R.string.cancelar)) } },
+        dismissButton = { TextButton(onClick = alCerrar) { Text(stringResource(R.string.volver)) } },
     )
 }
 
@@ -155,21 +152,12 @@ private fun ClaveRestaurarDialog(alConfirmar: (clave: String, alTerminar: (Error
                 }
             }) { Text(stringResource(R.string.respaldo_restaurar_confirmar)) }
         },
-        dismissButton = { TextButton(enabled = !restaurando, onClick = alCerrar) { Text(stringResource(R.string.cancelar)) } },
+        dismissButton = { TextButton(enabled = !restaurando, onClick = alCerrar) { Text(stringResource(R.string.volver)) } },
     )
 }
 
 @Composable
-private fun CampoClave(valor: String, alCambiar: (String) -> Unit, etiqueta: String) {
-    OutlinedTextField(
-        value = valor,
-        onValueChange = alCambiar,
-        label = { Text(etiqueta) },
-        singleLine = true,
-        visualTransformation = PasswordVisualTransformation(),
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-        modifier = Modifier.fillMaxWidth(),
-    )
-}
+private fun CampoClave(valor: String, alCambiar: (String) -> Unit, etiqueta: String) =
+    CampoContrasenia(valor = valor, alCambiar = alCambiar, etiqueta = etiqueta)
 
 private const val TIPO_ARCHIVO = "application/octet-stream"

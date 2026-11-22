@@ -20,6 +20,7 @@ import ar.edu.fguerrero.da1.agendasalud.mock.ReglaDispatcherPrincipal
 import ar.edu.fguerrero.da1.agendasalud.presentation.comun.Aviso
 import ar.edu.fguerrero.da1.agendasalud.presentation.comun.EstadoUi
 import ar.edu.fguerrero.da1.agendasalud.presentation.comun.datosOrNull
+import ar.edu.fguerrero.da1.agendasalud.presentation.navegacion.PedidosNavegacion
 import ar.edu.fguerrero.da1.agendasalud.presentation.pacientes.PacientesViewModel
 import ar.edu.fguerrero.da1.agendasalud.presentation.pagos.CobrosViewModel
 import ar.edu.fguerrero.da1.agendasalud.presentation.turnos.AgendaDiaViewModel
@@ -119,7 +120,11 @@ class ViewModelsConMockTest {
 
         vm.registrarCobro(8_000_00L, LUNES, MedioCobro.EFECTIVO) {}
         assertNull(vm.cobroEnCurso.value)
-        assertEquals(AgendaDiaViewModel.avisoCobro(12_000_00L), vm.avisos.first())
+        val aviso = vm.avisos.first() as Aviso.Exito
+        val esperado = AgendaDiaViewModel.avisoCobro(12_000_00L) as Aviso.Exito
+        assertEquals(esperado.texto, aviso.texto)
+        assertEquals(esperado.args, aviso.args)
+        assertTrue("Ofrece deshacer el cobro", aviso.deshacer != null)
         assertEquals(12_000_00L, vm.uiState.value.datosOrNull()!!.saldosDelDia.single().saldoCentavos)
     }
 
@@ -163,7 +168,9 @@ class ViewModelsConMockTest {
 
     // ---------- Pacientes ----------
 
-    private fun pacientes() = PacientesViewModel(repo.pacientes, repo.turnos, repo.cobros, SavedStateHandle())
+    private val pedidos = PedidosNavegacion()
+
+    private fun pacientes() = PacientesViewModel(repo.pacientes, repo.turnos, repo.cobros, SavedStateHandle(), pedidos)
 
     @Test
     fun vm09_busquedaFiltraDespuesDelDebounce() = runTest {

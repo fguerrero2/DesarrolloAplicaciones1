@@ -47,6 +47,7 @@ abstract class PantallaActivity : ComponentActivity() {
     @Inject lateinit var cuenta: CuentaRepository
     @Inject lateinit var programador: ProgramadorSincronizacion
     @Inject @AlcanceApp lateinit var alcanceApp: CoroutineScope
+    @Inject lateinit var pedidos: PedidosNavegacion
 
     /** Qué pestaña es esta Activity (para marcarla en la barra). */
     protected abstract val pestania: Pestania
@@ -83,7 +84,7 @@ abstract class PantallaActivity : ComponentActivity() {
                 // Sin la base abierta no se crea la pantalla (su ViewModel la necesita).
                 // Mientras tanto se ve el fondo, tapado por el login.
                 if (estado == EstadoBase.Lista) {
-                    MarcoPantalla(pestania, alElegir = ::irA, alCerrarSesion = ::cerrarSesion) { Contenido() }
+                    MarcoPantalla(pestania, alElegir = ::irA, alCerrarSesion = ::cerrarSesion, alCargarPaciente = ::cargarPaciente) { Contenido() }
                 } else {
                     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
                 }
@@ -100,6 +101,12 @@ abstract class PantallaActivity : ComponentActivity() {
         if (destino == pestania) return
         val intent = Intent(this, destino.activity.java).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
         startActivity(intent, ActivityOptions.makeCustomAnimation(this, 0, 0).toBundle())
+    }
+
+    /** Desde un estado vacío: abre Pacientes con el formulario de alta ya abierto. */
+    private fun cargarPaciente() {
+        pedidos.pedirNuevoPaciente()
+        irA(Pestania.PACIENTES)
     }
 
     /**

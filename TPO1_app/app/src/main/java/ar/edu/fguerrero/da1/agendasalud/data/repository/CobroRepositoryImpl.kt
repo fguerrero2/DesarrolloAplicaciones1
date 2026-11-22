@@ -4,6 +4,7 @@ import ar.edu.fguerrero.da1.agendasalud.data.local.AgendaDatabase
 import ar.edu.fguerrero.da1.agendasalud.data.local.aDominio
 import ar.edu.fguerrero.da1.agendasalud.data.local.entity.CobroEntity
 import ar.edu.fguerrero.da1.agendasalud.domain.model.CargoPendiente
+import ar.edu.fguerrero.da1.agendasalud.domain.model.Cobro
 import ar.edu.fguerrero.da1.agendasalud.domain.model.ErrorDominio
 import ar.edu.fguerrero.da1.agendasalud.domain.model.MedioCobro
 import ar.edu.fguerrero.da1.agendasalud.domain.model.Resultado
@@ -32,6 +33,12 @@ class CobroRepositoryImpl @Inject constructor(private val db: AgendaDatabase) : 
 
     override suspend fun obtenerCargoDeTurno(turnoId: Long): CargoPendiente? =
         dao.cargoConCobradoDeTurno(turnoId)?.aDominio()
+
+    override suspend fun ultimoCobro(cargoId: Long): Cobro? = dao.ultimoCobro(cargoId)?.aDominio()
+
+    override suspend fun anular(cobroId: Long): Resultado<Unit> = db.transaccion {
+        if (dao.eliminarCobro(cobroId) == 0) fallar(ErrorDominio.NoEncontrado)
+    }
 
     override suspend fun registrar(
         cargoId: Long,

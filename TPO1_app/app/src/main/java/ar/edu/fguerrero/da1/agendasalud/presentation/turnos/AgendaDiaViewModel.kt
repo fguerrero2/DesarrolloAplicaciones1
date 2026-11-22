@@ -159,10 +159,18 @@ class AgendaDiaViewModel @Inject constructor(
         alTerminar(null)
     }
 
-    /** Completa la sesión y, si queda saldo, abre directamente el registro de cobro. */
+    /**
+     * Completa la sesión (la pantalla pide confirmación antes) y, si queda saldo, abre directamente
+     * el registro de cobro. Si fue un error, se deshace con [deshacerCompletar].
+     */
     fun completar(turnoId: Long) = ejecutar({ completarSesion(turnoId) }) {
         avisar(Aviso.Exito(R.string.aviso_sesion_completada))
         abrirCobro(turnoId)
+    }
+
+    /** Vuelve a programada una sesión completada por error (solo si todavía no tiene cobros). */
+    fun deshacerCompletar(turnoId: Long) = ejecutar({ turnos.deshacerCompletar(turnoId) }) {
+        avisar(Aviso.Exito(R.string.aviso_sesion_reabierta))
     }
 
     fun abrirCobro(turnoId: Long) {
@@ -184,15 +192,23 @@ class AgendaDiaViewModel @Inject constructor(
         alTerminar: (ErrorDominio?) -> Unit,
     ) {
         val cargo = _cobroEnCurso.value ?: return
-        ejecutar({ registrarCobro(cargo.cargoId, montoCentavos, medio, fechaCobro) }, alFallar = alTerminar) {
+        ejecutar({ registrarCobro(cargo.cargoId, montoCentavos, medio, fechaCobro) }, alFallar = alTerminar) { cobroId ->
             _cobroEnCurso.value = null
-            avisar(avisoCobro(cargo.pendienteCentavos - montoCentavos))
+            avisar(avisoCobro(cargo.pendienteCentavos - montoCentavos, deshacer = { anularCobro(cobroId) }))
             alTerminar(null)
         }
     }
 
     fun cancelar(turnoId: Long, motivo: String?) = ejecutar({ turnos.cancelar(turnoId, motivo) }) {
-        avisar(Aviso.Exito(R.string.aviso_turno_cancelado))
+        avisar(Aviso.Exito(R.string.aviso_turno_cancelado, deshacer = { reactivar(turnoId) }))
+    }
+
+    private fun reactivar(turnoId: Long) = ejecutar({ turnos.reactivar(turnoId) }) {
+        avisar(Aviso.Exito(R.string.aviso_turno_reactivado))
+    }
+
+    private fun anularCobro(cobroId: Long) = ejecutar({ cobros.anular(cobroId) }) {
+        avisar(Aviso.Exito(R.string.aviso_cobro_anulado))
     }
 
     fun reprogramar(turnoId: Long, nuevoInicio: LocalDateTime, alTerminar: (ErrorDominio?) -> Unit) =
@@ -218,18 +234,23 @@ class AgendaDiaViewModel @Inject constructor(
             alTerminar(null)
         }
 
-    fun eliminarBloqueo(id: Long) {
+    fun eliminarBloqueo(bloqueo: BloqueoAgenda) {
         lanzar {
-            bloqueos.eliminar(id)
-            avisar(Aviso.Exito(R.string.aviso_bloqueo_eliminado))
+            bloqueos.eliminar(bloqueo.id)
+            avisar(Aviso.Exito(R.string.aviso_bloqueo_eliminado, deshacer = { restaurarBloqueo(bloqueo) }))
         }
+    }
+
+    private fun restaurarBloqueo(bloqueo: BloqueoAgenda) = ejecutar({ bloqueos.crear(bloqueo) }) {
+        avisar(Aviso.Exito(R.string.aviso_bloqueo_restaurado))
     }
 
     companion object {
         private const val CLAVE_FECHA = "fecha"
 
-        fun avisoCobro(pendienteRestante: Long): Aviso =
-            if (pendienteRestante > 0) Aviso.Exito(R.string.aviso_cobro_parcial, listOf(formatearPesos(pendienteRestante)))
-            else Aviso.Exito(R.string.aviso_cobro_total)
+        /** [deshacer] anula el cobro recién registrado, por si se cargó mal el monto o el medio. */
+        fun avisoCobro(pendienteRestante: Long, deshacer: (() -> Unit)? = null): Aviso =
+            if (pendienteRestante > 0) Aviso.Exito(R.string.aviso_cobro_parcial, listOf(formatearPesos(pendienteRestante)), deshacer)
+            else Aviso.Exito(R.string.aviso_cobro_total, deshacer = deshacer)
     }
 }

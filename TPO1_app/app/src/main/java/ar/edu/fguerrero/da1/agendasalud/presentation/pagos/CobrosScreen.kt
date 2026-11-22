@@ -8,9 +8,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -20,7 +22,9 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ar.edu.fguerrero.da1.agendasalud.R
 import ar.edu.fguerrero.da1.agendasalud.core.util.formatearFechaCorta
+import ar.edu.fguerrero.da1.agendasalud.core.util.formatearFechaNumerica
 import ar.edu.fguerrero.da1.agendasalud.core.util.formatearPesos
+import ar.edu.fguerrero.da1.agendasalud.domain.model.MedioCobro
 import ar.edu.fguerrero.da1.agendasalud.presentation.comun.BotonAncho
 import ar.edu.fguerrero.da1.agendasalud.presentation.comun.Encabezado
 import ar.edu.fguerrero.da1.agendasalud.presentation.comun.ErrorCarga
@@ -36,6 +40,7 @@ fun CobrosScreen(modifier: Modifier = Modifier, viewModel: CobrosViewModel = hil
     val estado by viewModel.uiState.collectAsStateWithLifecycle()
     val soloPendientes by viewModel.soloPendientes.collectAsStateWithLifecycle()
     val cobro by viewModel.cobroEnCurso.collectAsStateWithLifecycle()
+    val anulacion by viewModel.anulacion.collectAsStateWithLifecycle()
     MostrarAvisos(viewModel.avisos)
     val datos = estado.datosOrNull()
 
@@ -81,6 +86,10 @@ fun CobrosScreen(modifier: Modifier = Modifier, viewModel: CobrosViewModel = hil
                     if (cargo.pendienteCentavos > 0) {
                         BotonAncho(stringResource(R.string.turno_registrar_cobro), onClick = { viewModel.abrirCobro(cargo) })
                     }
+                    // Corregir un cobro mal cargado (Nielsen H3)
+                    if (cargo.cobradoCentavos > 0) {
+                        BotonAncho(stringResource(R.string.cobros_anular), onClick = { viewModel.pedirAnular(cargo) })
+                    }
                 }
             }
             item {
@@ -92,4 +101,28 @@ fun CobrosScreen(modifier: Modifier = Modifier, viewModel: CobrosViewModel = hil
     cobro?.let { cargo ->
         RegistrarCobroDialog(cargo = cargo, alConfirmar = viewModel::registrarCobro, alCerrar = viewModel::cerrarCobro)
     }
+
+    anulacion?.let { (cargo, cobroAAnular) ->
+        AlertDialog(
+            onDismissRequest = viewModel::cerrarAnulacion,
+            title = { Text(stringResource(R.string.cobros_anular)) },
+            text = {
+                Text(
+                    stringResource(
+                        R.string.cobros_anular_pregunta,
+                        formatearPesos(cobroAAnular.importeCentavos),
+                        formatearFechaNumerica(cobroAAnular.fecha),
+                        stringResource(etiquetaMedio(cobroAAnular.medio)),
+                    ) + "\n" + stringResource(R.string.cobro_sesion, cargo.nombrePaciente, formatearFechaCorta(cargo.fechaSesion))
+                )
+            },
+            confirmButton = { TextButton(onClick = viewModel::confirmarAnulacion) { Text(stringResource(R.string.cobros_anular_confirmar)) } },
+            dismissButton = { TextButton(onClick = viewModel::cerrarAnulacion) { Text(stringResource(R.string.volver)) } },
+        )
+    }
+}
+
+private fun etiquetaMedio(medio: MedioCobro) = when (medio) {
+    MedioCobro.EFECTIVO -> R.string.medio_efectivo
+    MedioCobro.MERCADO_PAGO -> R.string.medio_mercado_pago
 }

@@ -56,6 +56,7 @@ class MockRepository {
     private val estado = MutableStateFlow(Estado())
     private val duracion = MutableStateFlow(60)
     private val importe = MutableStateFlow(0L)
+    private val guia = MutableStateFlow(false)
 
     var fallarEscrituras = false
     var fallarLecturas = false
@@ -160,6 +161,30 @@ class MockRepository {
             Resultado.Exito(cargo!!)
         }
 
+        override suspend fun deshacerCompletar(turnoId: Long): Resultado<Unit> = escribir("turnos.deshacerCompletar") {
+            val actual = estado.value.turnos[turnoId] ?: return@escribir Resultado.Fallo(ErrorDominio.NoEncontrado)
+            if (actual.estado != EstadoTurno.COMPLETADO) return@escribir Resultado.Fallo(ErrorDominio.EstadoNoPermitido)
+            val cargo = estado.value.cargos.values.firstOrNull { it.turnoId == turnoId }
+            if (cargo != null && estado.value.cobros.values.any { it.cargoId == cargo.id }) {
+                return@escribir Resultado.Fallo(ErrorDominio.TieneCobros)
+            }
+            estado.update { e ->
+                e.copy(
+                    turnos = e.turnos + (turnoId to actual.copy(estado = EstadoTurno.PROGRAMADO)),
+                    cargos = if (cargo != null) e.cargos - cargo.id else e.cargos,
+                )
+            }
+            Resultado.Exito(Unit)
+        }
+
+        override suspend fun reactivar(turnoId: Long): Resultado<Unit> = escribir("turnos.reactivar") {
+            val actual = estado.value.turnos[turnoId] ?: return@escribir Resultado.Fallo(ErrorDominio.NoEncontrado)
+            if (actual.estado != EstadoTurno.CANCELADO) return@escribir Resultado.Fallo(ErrorDominio.EstadoNoPermitido)
+            validarHorario(actual, excluirTurnoId = turnoId)?.let { return@escribir Resultado.Fallo(it) }
+            guardarTurno(actual.copy(estado = EstadoTurno.PROGRAMADO, motivoCancelacion = null))
+            Resultado.Exito(Unit)
+        }
+
         override fun observarCancelacionesDelAnio(pacienteId: Long, anio: Int): Flow<Int> =
             leer { e ->
                 e.turnos.values.count {
@@ -218,6 +243,15 @@ class MockRepository {
             return e.cargos.values.firstOrNull { it.turnoId == turnoId }?.let { cargoPendiente(e, it) }
         }
 
+        override suspend fun ultimoCobro(cargoId: Long): Cobro? =
+            estado.value.cobros.values.filter { it.cargoId == cargoId }.maxByOrNull { it.id }
+
+        override suspend fun anular(cobroId: Long): Resultado<Unit> = escribir("cobros.anular") {
+            if (cobroId !in estado.value.cobros) return@escribir Resultado.Fallo(ErrorDominio.NoEncontrado)
+            estado.update { it.copy(cobros = it.cobros - cobroId) }
+            Resultado.Exito(Unit)
+        }
+
         override suspend fun registrar(
             cargoId: Long,
             montoCentavos: Long,
@@ -257,6 +291,12 @@ class MockRepository {
 
         override suspend fun guardarImportePredeterminado(centavos: Long) {
             importe.value = centavos
+        }
+
+        override val guiaVista: Flow<Boolean> = guia
+
+        override suspend fun marcarGuiaVista() {
+            guia.value = true
         }
     }
 

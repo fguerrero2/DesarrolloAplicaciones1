@@ -48,6 +48,17 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import ar.edu.fguerrero.da1.agendasalud.R
 import ar.edu.fguerrero.da1.agendasalud.core.util.formatearFechaNumerica
@@ -69,6 +80,10 @@ data class AccionesCuenta(
     val exportarRespaldo: () -> Unit,
     val restaurarRespaldo: () -> Unit,
     val cerrarSesion: () -> Unit,
+    /** Abre la ayuda "¿Cómo funciona?" (Nielsen H10). */
+    val abrirAyuda: () -> Unit,
+    /** Lleva a Pacientes con el alta abierta (para los estados vacíos sin pacientes). */
+    val cargarPaciente: () -> Unit,
 )
 
 val LocalAccionesCuenta = staticCompositionLocalOf<AccionesCuenta?> { null }
@@ -113,6 +128,7 @@ private fun IndicadorSincronizando(modifier: Modifier = Modifier) {
 @Composable
 private fun MenuCuenta(acciones: AccionesCuenta) {
     var abierto by rememberSaveable { mutableStateOf(false) }
+    var confirmandoCierre by rememberSaveable { mutableStateOf(false) }
     Box {
         IconButton(onClick = { abierto = true }) {
             Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.menu_cuenta))
@@ -155,15 +171,38 @@ private fun MenuCuenta(acciones: AccionesCuenta) {
                     acciones.restaurarRespaldo()
                 },
             )
+            HorizontalDivider()
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.ayuda_menu)) },
+                onClick = {
+                    abierto = false
+                    acciones.abrirAyuda()
+                },
+            )
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.cerrar_sesion)) },
                 leadingIcon = { Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = null) },
                 onClick = {
                     abierto = false
-                    acciones.cerrarSesion()
+                    confirmandoCierre = true
                 },
             )
         }
+    }
+    // Confirmación: un toque por error obligaría a volver a ingresar (Nielsen H3 y H5)
+    if (confirmandoCierre) {
+        AlertDialog(
+            onDismissRequest = { confirmandoCierre = false },
+            title = { Text(stringResource(R.string.cerrar_sesion_pregunta)) },
+            text = { Text(stringResource(R.string.cerrar_sesion_explicacion)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmandoCierre = false
+                    acciones.cerrarSesion()
+                }) { Text(stringResource(R.string.cerrar_sesion)) }
+            },
+            dismissButton = { TextButton(onClick = { confirmandoCierre = false }) { Text(stringResource(R.string.volver)) } },
+        )
     }
 }
 
@@ -239,7 +278,7 @@ fun CampoFecha(
                     abierto = false
                 }) { Text(stringResource(R.string.aceptar)) }
             },
-            dismissButton = { TextButton(onClick = { abierto = false }) { Text(stringResource(R.string.cancelar)) } },
+            dismissButton = { TextButton(onClick = { abierto = false }) { Text(stringResource(R.string.volver)) } },
         ) { DatePicker(estado) }
     }
 }
@@ -250,28 +289,58 @@ private object DiasDeAtencion : SelectableDates {
         HorarioAtencion.franja(Instant.ofEpochMilli(utcTimeMillis).atZone(ZoneOffset.UTC).toLocalDate()) != null
 }
 
+/**
+ * Hora con el horario de atención del día a la vista ([franja], Nielsen H6) y sin poder elegir una
+ * hora fuera de él (H5): el error se ve mientras se escribe, no recién al guardar.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CampoHora(etiqueta: String, hora: LocalTime, modifier: Modifier = Modifier, alCambiar: (LocalTime) -> Unit) {
+fun CampoHora(
+    etiqueta: String,
+    hora: LocalTime,
+    modifier: Modifier = Modifier,
+    franja: Pair<LocalTime, LocalTime>? = null,
+    alCambiar: (LocalTime) -> Unit,
+) {
     var abierto by rememberSaveable { mutableStateOf(false) }
-    BotonAncho("$etiqueta: ${formatearHora(hora)}", onClick = { abierto = true }, modifier = modifier)
+    Column(modifier) {
+        BotonAncho("$etiqueta: ${formatearHora(hora)}", onClick = { abierto = true })
+        franja?.let { (desde, hasta) ->
+            Text(
+                stringResource(R.string.horario_atencion_dia, formatearHora(desde), formatearHora(hasta)),
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(start = 4.dp, top = 2.dp),
+            )
+        }
+    }
     if (abierto) {
         val estado = rememberTimePickerState(initialHour = hora.hour, initialMinute = hora.minute, is24Hour = true)
+        val elegida = LocalTime.of(estado.hour, estado.minute)
+        // El inicio tiene que estar dentro del horario (y antes del cierre)
+        val valida = franja == null || (!elegida.isBefore(franja.first) && elegida.isBefore(franja.second))
         AlertDialog(
             onDismissRequest = { abierto = false },
             title = { Text(etiqueta) },
-            text = { TimeInput(estado) },
+            text = {
+                Column {
+                    TimeInput(estado)
+                    if (!valida && franja != null) {
+                        TextoError(stringResource(R.string.horario_hora_fuera, formatearHora(franja.first), formatearHora(franja.second)))
+                    }
+                }
+            },
             confirmButton = {
-                TextButton(onClick = {
-                    alCambiar(LocalTime.of(estado.hour, estado.minute))
+                TextButton(enabled = valida, onClick = {
+                    alCambiar(elegida)
                     abierto = false
                 }) { Text(stringResource(R.string.aceptar)) }
             },
-            dismissButton = { TextButton(onClick = { abierto = false }) { Text(stringResource(R.string.cancelar)) } },
+            dismissButton = { TextButton(onClick = { abierto = false }) { Text(stringResource(R.string.volver)) } },
         )
     }
 }
 
+/** Elegir paciente con búsqueda por nombre: con muchos pacientes no hay que recorrer la lista (Nielsen H6 y H7). */
 @Composable
 fun SelectorPaciente(
     pacientes: List<Paciente>,
@@ -280,23 +349,81 @@ fun SelectorPaciente(
     alElegir: (Paciente) -> Unit,
 ) {
     var abierto by rememberSaveable { mutableStateOf(false) }
-    Box(modifier) {
-        BotonAncho(
-            stringResource(R.string.campo_paciente, seleccionado?.nombre ?: stringResource(R.string.elegir)),
-            onClick = { abierto = true },
+    BotonAncho(
+        stringResource(R.string.campo_paciente, seleccionado?.nombre ?: stringResource(R.string.elegir)),
+        onClick = { abierto = true },
+        modifier = modifier,
+    )
+    if (abierto) {
+        var busqueda by rememberSaveable { mutableStateOf("") }
+        val filtrados = pacientes.filter { it.nombre.contains(busqueda.trim(), ignoreCase = true) }
+        AlertDialog(
+            onDismissRequest = { abierto = false },
+            title = { Text(stringResource(R.string.paciente_elegir_titulo)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = busqueda,
+                        onValueChange = { busqueda = it },
+                        placeholder = { Text(stringResource(R.string.pacientes_buscar)) },
+                        leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    if (filtrados.isEmpty()) Text(stringResource(R.string.pacientes_sin_resultados))
+                    LazyColumn(Modifier.heightIn(max = 320.dp)) {
+                        items(filtrados, key = { it.id }) { paciente ->
+                            DropdownMenuItem(
+                                text = { Text(paciente.nombre) },
+                                onClick = {
+                                    alElegir(paciente)
+                                    abierto = false
+                                },
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = { TextButton(onClick = { abierto = false }) { Text(stringResource(R.string.volver)) } },
         )
-        DropdownMenu(expanded = abierto, onDismissRequest = { abierto = false }) {
-            pacientes.forEach { paciente ->
-                DropdownMenuItem(
-                    text = { Text(paciente.nombre) },
-                    onClick = {
-                        alElegir(paciente)
-                        abierto = false
-                    },
+    }
+}
+
+/**
+ * Contraseña con botón para mostrarla u ocultarla (Nielsen H5: ver lo que se escribe evita errores).
+ * Con [alEnviar], la tecla Enter del teclado envía el formulario.
+ */
+@Composable
+fun CampoContrasenia(
+    valor: String,
+    alCambiar: (String) -> Unit,
+    etiqueta: String,
+    modifier: Modifier = Modifier,
+    alEnviar: (() -> Unit)? = null,
+) {
+    var visible by rememberSaveable { mutableStateOf(false) }
+    OutlinedTextField(
+        value = valor,
+        onValueChange = alCambiar,
+        label = { Text(etiqueta) },
+        singleLine = true,
+        visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(),
+        keyboardOptions = KeyboardOptions(
+            keyboardType = KeyboardType.Password,
+            imeAction = if (alEnviar != null) ImeAction.Done else ImeAction.Next,
+        ),
+        keyboardActions = KeyboardActions(onDone = { alEnviar?.invoke() }),
+        trailingIcon = {
+            IconButton(onClick = { visible = !visible }) {
+                Icon(
+                    painterResource(if (visible) R.drawable.ic_ocultar else R.drawable.ic_mostrar),
+                    contentDescription = stringResource(if (visible) R.string.ocultar_contrasenia else R.string.mostrar_contrasenia),
                 )
             }
-        }
-    }
+        },
+        modifier = modifier.fillMaxWidth(),
+    )
 }
 
 /** Mensaje de error dentro de un diálogo. */

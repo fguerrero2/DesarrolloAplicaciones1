@@ -3,7 +3,6 @@
 
     <!-- Comunes -->
     <string name="aceptar">Aceptar</string>
-    <string name="cancelar">Cancelar</string>
     <string name="volver">Volver</string>
     <string name="guardar">Guardar</string>
     <string name="guardar_cambio">Guardar cambio</string>
@@ -244,4 +243,52 @@
     <string name="sync_fallo_sin_cuenta">No se pudo sincronizar: venció la sesión con el servidor. Cerrá sesión e ingresá con tu contraseña. Tus datos siguen guardados en el celular.</string>
     <string name="sync_fallo_error">No se pudo sincronizar por un problema del servidor. Tus datos siguen guardados en el celular.</string>
     <string name="sync_reintentar">Reintentar</string>
+
+    <!-- Usabilidad (heurísticas de Nielsen) -->
+    <string name="deshacer">Deshacer</string>
+    <string name="cerrar">Cerrar</string>
+    <string name="turno_completar_pregunta">¿Completar la sesión de %1$s de las %2$s? Se genera un cargo de %3$s para cobrar.</string>
+    <string name="turno_deshacer_completar">Volver a programada</string>
+    <string name="turno_deshacer_completar_ayuda">Si la completaste por error. Solo se puede mientras no tenga cobros.</string>
+    <string name="aviso_sesion_reabierta">La sesión volvió a programada.</string>
+    <string name="aviso_turno_reactivado">Turno reactivado.</string>
+    <string name="aviso_bloqueo_restaurado">Bloqueo restaurado.</string>
+    <string name="aviso_cobro_anulado">Cobro anulado.</string>
+    <string name="cobros_anular">Anular último cobro</string>
+    <string name="cobros_anular_pregunta">¿Anular el cobro de %1$s del %2$s (%3$s)? Ese monto vuelve a quedar pendiente.</string>
+    <string name="cobros_anular_confirmar">Anular cobro</string>
+    <string name="error_tiene_cobros">La sesión ya tiene cobros. Anulalos desde Cobros antes de volver a programarla.</string>
+    <string name="cerrar_sesion_pregunta">¿Cerrar sesión?</string>
+    <string name="cerrar_sesion_explicacion">Para volver a entrar vas a necesitar tu contraseña o tu huella. Tus datos quedan guardados en el celular.</string>
+    <string name="horario_atencion_dia">Atención este día: de %1$s a %2$s</string>
+    <string name="horario_hora_fuera">Elegí una hora entre las %1$s y las %2$s.</string>
+    <string name="paciente_elegir_titulo">Elegir paciente</string>
+    <string name="turno_cargar_paciente">Cargar paciente</string>
+    <string name="hoy_primer_paso">Para empezar, cargá tu primer paciente. Después vas a poder darle turnos desde esta pantalla.</string>
+    <string name="sin_conexion_banner">Sin conexión. Podés seguir trabajando: los cambios se guardan en el celular y se sincronizan cuando vuelva internet.</string>
+    <string name="mostrar_contrasenia">Mostrar contraseña</string>
+    <string name="ocultar_contrasenia">Ocultar contraseña</string>
+
+    <!-- Ayuda y guía de bienvenida -->
+    <string name="ayuda_menu">¿Cómo funciona?</string>
+    <string name="ayuda_titulo">Cómo funciona AgendaSalud</string>
+    <string name="guia_titulo">Te damos la bienvenida</string>
+    <string name="guia_introduccion">Un resumen rápido para empezar. Podés volver a verlo cuando quieras desde ⋮ → ¿Cómo funciona?</string>
+    <string name="guia_empezar">Empezar</string>
+    <string name="ayuda_pasos_titulo">Primeros pasos</string>
+    <string name="ayuda_pasos">1. Cargá tus pacientes en la pestaña Pacientes.
+2. En Hoy o Agenda, tocá un horario disponible para dar un turno.
+3. Al terminar la sesión, tocá el turno → Completar sesión y registrá el cobro.</string>
+    <string name="ayuda_turnos_titulo">Turnos</string>
+    <string name="ayuda_turnos">Atendés de lunes a viernes de 9 a 18 y los sábados de 9 a 12. Tocá un turno para completarlo, reprogramarlo o cancelarlo. Si te equivocás, la mayoría de las acciones se pueden deshacer desde el aviso que aparece abajo.</string>
+    <string name="ayuda_cobros_titulo">Cobros y saldos</string>
+    <string name="ayuda_cobros">Cada sesión completada genera un cargo, que podés cobrar en partes, en efectivo o por Mercado Pago. Si cargaste mal un cobro, anulalo desde Cobros → Todos. El saldo se calcula solo.</string>
+    <string name="ayuda_inactivos_titulo">Pacientes inactivos</string>
+    <string name="ayuda_inactivos">Desactivar a un paciente no borra nada: conserva su historial y su saldo, pero no se le pueden dar turnos nuevos. Podés reactivarlo cuando quieras.</string>
+    <string name="ayuda_sync_titulo">Tus datos y la sincronización</string>
+    <string name="ayuda_sync">Todo se guarda cifrado en el celular, aun sin internet. Con conexión se sincroniza solo con el servidor, también cifrado, así recuperás tus datos si cambiás de celular. Para hacerlo en el momento: ⋮ → Sincronizar ahora.</string>
+    <string name="ayuda_respaldo_titulo">Respaldo en archivo</string>
+    <string name="ayuda_respaldo">Además podés exportar un archivo cifrado con ⋮ → Exportar respaldo y guardarlo donde quieras, por ejemplo en Google Drive. Tiene una contraseña propia: si la olvidás, el archivo no se puede abrir.</string>
+    <string name="ayuda_contrasenia_titulo">Si olvidás tu contraseña</string>
+    <string name="ayuda_contrasenia">En el ingreso, tocá ¿Olvidaste tu contraseña? y seguí el enlace del mail. Hacelo desde el celular que tiene tus datos, así se conserva la copia del servidor.</string>
 </resources>

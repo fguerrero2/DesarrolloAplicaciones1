@@ -619,9 +619,10 @@ Todas en `domain/rules/` (Kotlin puro, con tests).
 | `data/AgendaDatabaseTest` (3) | Instrumentado | Archivo cifrado, superposición en transacción, cobro RF04 y completar idempotente | `./gradlew :app:connectedDebugAndroidTest` |
 | `domain/usecase/CasosDeUsoTest` (21) | JVM + MockRepository | CP-01 a CP-21: reservar (paciente inexistente/inactivo, superposición, contiguos, fuera de horario, bloqueos), cancelar libera el horario, reprogramar conserva la fecha original, completar sin duplicar el cargo, cobro parcial y total, montos inválidos, falla de guardado | `./gradlew :app:testDebugUnitTest` |
 | `presentation/ViewModelsConMockTest` (14) | JVM + MockRepository | VM-01 a VM-14: lo que muestran Agenda/Hoy, Pacientes y Cobros (EstadoUi y avisos) al reservar, completar, cobrar, reprogramar (borrador de WhatsApp), buscar con debounce, desactivar, filtrar pendientes; error de lectura con reintento y error de guardado | idem |
-| `presentation/SincronizacionViewModelTest` (8) | JVM | S-01 a S-08: indicador mientras sincroniza, aviso de éxito, causa de cada error con o sin Reintentar, doble toque, reintento, automáticas sin snackbar | idem |
+| `presentation/SincronizacionViewModelTest` (9) | JVM | S-01 a S-09: indicador mientras sincroniza, aviso de modo sin conexión, aviso de éxito, causa de cada error con o sin Reintentar, doble toque, reintento, automáticas sin snackbar | idem |
+| `presentation/UsabilidadTest` (11) | JVM + MockRepository | U-01 a U-11: deshacer completar (y no si ya tiene cobros), deshacer cancelar y reactivar solo con horario libre, deshacer cobro y quitar bloqueo, anular cobro con confirmación, guía solo la primera vez, ayuda desde el menú, "Cargar paciente" desde otra pantalla | idem |
 
-**Resultado actual:** 80/80 JVM ✅ · instrumentados: 3, corridos antes de Hilt y de separar las Activities (**hay que volver a correrlos**) · lint sin errores · build release con R8 ✅.
+**Resultado actual:** 92/92 JVM ✅ · instrumentados: 3, corridos antes de Hilt y de separar las Activities (**hay que volver a correrlos**) · lint sin errores · build release con R8 ✅.
 
 **MockRepository** (`app/src/test/…/mock/MockRepository.kt`): implementa en memoria las interfaces de `domain/repository` (pacientes, turnos, bloqueos, cobros y preferencias) aplicando las mismas reglas que los repositorios de Room. Permite probar casos de uso y ViewModels en la JVM, en segundos y sin emulador. Con `fallarEscrituras` y `fallarLecturas` simula errores de la base, y `operaciones` registra qué escrituras recibió. Para comprobar que los tests detectan modificaciones, se cambió el cierre del horario de 18 a 19 h y fallaron 5.
 
@@ -737,6 +738,25 @@ La consigna pide que toda modificación significativa pueda **explicarse y justi
 | `.gitignore` | `data/` ignoraba también la capa de datos del código; ahora es `/data/`. Se versiona `gradle-wrapper.jar` |
 | Hilt | Reemplaza la inyección manual (`AppContainer` + `fabricaViewModel`), como se vio en clase |
 | Responsive | En horizontal o en tablet la navegación pasa al costado (`NavigationRail`) y el contenido tiene un ancho máximo de 720 dp |
+
+### 12.10 Usabilidad: heurísticas de Nielsen
+
+Después de un análisis heurístico de toda la app se implementaron estas mejoras:
+
+| # | Mejora | Heurística |
+|---|---|---|
+| 1 | **Completar sesión** pide confirmación y muestra el cargo que se va a generar. Una sesión completada por error se puede **volver a programada** desde su panel, mientras no tenga cobros. Un **cobro** mal cargado se anula con **Deshacer** en el aviso o después, desde Cobros → **Anular último cobro**, con confirmación | H3, H5 |
+| 2 | **Ayuda**: ⋮ → *¿Cómo funciona?* (primeros pasos, turnos, cobros, inactivos, sincronización, respaldo y contraseña) y una **guía de bienvenida** que se muestra una sola vez | H10 |
+| 3 | **Deshacer** en el aviso al cancelar un turno (se reactiva si el horario sigue libre) y al quitar un bloqueo | H3 |
+| 4 | **Cerrar sesión** pide confirmación | H3, H5 |
+| 5 | Todos los diálogos usan **Volver** para cerrar, en vez de "Cancelar", que se confundía con "Cancelar turno" | H4 |
+| 6 | El campo de hora muestra el **horario de atención del día** y no acepta horas fuera de él. Si la sesión terminaría después del cierre, se avisa antes de guardar y no se habilita Guardar | H5, H6 |
+| 7 | El selector de paciente tiene **búsqueda** por nombre | H6, H7 |
+| 8 | Sin pacientes: Hoy/Agenda muestran el **primer paso** y el diálogo de turno tiene un botón **Cargar paciente**, que abre Pacientes con el alta lista (`PedidosNavegacion`) | H10, H3 |
+| 9 | Franja **Sin conexión** en todas las pantallas mientras no hay internet (`MonitorConexion`), aclarando que se puede seguir trabajando | H1 |
+| 10 | Las contraseñas (login y respaldo) tienen botón para **mostrar u ocultar** (`CampoContrasenia`), y la tecla Enter envía el formulario | H5, H6 |
+
+Para deshacer, el aviso (`Aviso.Exito`) admite una acción `deshacer`: el snackbar muestra **Deshacer** y dura más. Operaciones nuevas en los repositorios: `TurnoRepository.deshacerCompletar` y `reactivar`, y `CobroRepository.ultimoCobro` y `anular`. Tests: `UsabilidadTest` (U-01 a U-11) y S-09.
 
 ## 13. Verificaciones pendientes
 

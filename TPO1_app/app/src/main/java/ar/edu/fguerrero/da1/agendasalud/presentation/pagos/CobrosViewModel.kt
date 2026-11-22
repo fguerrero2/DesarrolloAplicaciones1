@@ -1,11 +1,14 @@
 package ar.edu.fguerrero.da1.agendasalud.presentation.pagos
 
 import androidx.lifecycle.SavedStateHandle
+import ar.edu.fguerrero.da1.agendasalud.R
 import ar.edu.fguerrero.da1.agendasalud.domain.model.CargoPendiente
+import ar.edu.fguerrero.da1.agendasalud.domain.model.Cobro
 import ar.edu.fguerrero.da1.agendasalud.domain.model.ErrorDominio
 import ar.edu.fguerrero.da1.agendasalud.domain.model.MedioCobro
 import ar.edu.fguerrero.da1.agendasalud.domain.repository.CobroRepository
 import ar.edu.fguerrero.da1.agendasalud.domain.usecase.RegistrarCobro
+import ar.edu.fguerrero.da1.agendasalud.presentation.comun.Aviso
 import ar.edu.fguerrero.da1.agendasalud.presentation.comun.EstadoUi
 import ar.edu.fguerrero.da1.agendasalud.presentation.comun.ViewModelConAvisos
 import ar.edu.fguerrero.da1.agendasalud.presentation.turnos.AgendaDiaViewModel
@@ -16,6 +19,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import java.time.LocalDate
 import javax.inject.Inject
+
+/** Cobro que el usuario pidió anular, para confirmarlo mostrando monto, fecha y medio. */
+data class CobroAAnular(val cargo: CargoPendiente, val cobro: Cobro)
 
 data class DatosCobros(
     val cargos: List<CargoPendiente>,
@@ -34,6 +40,9 @@ class CobrosViewModel @Inject constructor(
 
     private val _cobroEnCurso = MutableStateFlow<CargoPendiente?>(null)
     val cobroEnCurso: StateFlow<CargoPendiente?> = _cobroEnCurso.asStateFlow()
+
+    private val _anulacion = MutableStateFlow<CobroAAnular?>(null)
+    val anulacion: StateFlow<CobroAAnular?> = _anulacion.asStateFlow()
 
     val uiState: StateFlow<EstadoUi<DatosCobros>> = estadoUi {
         combine(cobros.observarCargos(), soloPendientes) { cargos, pendientes ->
@@ -58,11 +67,32 @@ class CobrosViewModel @Inject constructor(
 
     fun registrarCobro(montoCentavos: Long, fecha: LocalDate, medio: MedioCobro, alTerminar: (ErrorDominio?) -> Unit) {
         val cargo = _cobroEnCurso.value ?: return
-        ejecutar({ registrarCobro(cargo.cargoId, montoCentavos, medio, fecha) }, alFallar = alTerminar) {
+        ejecutar({ registrarCobro(cargo.cargoId, montoCentavos, medio, fecha) }, alFallar = alTerminar) { cobroId ->
             _cobroEnCurso.value = null
-            avisar(AgendaDiaViewModel.avisoCobro(cargo.pendienteCentavos - montoCentavos))
+            avisar(AgendaDiaViewModel.avisoCobro(cargo.pendienteCentavos - montoCentavos, deshacer = { anular(cobroId) }))
             alTerminar(null)
         }
+    }
+
+    /** Busca el último cobro del cargo y pide confirmación antes de anularlo (Nielsen H3 y H5). */
+    fun pedirAnular(cargo: CargoPendiente) {
+        lanzar(ErrorDominio.ErrorLectura) {
+            _anulacion.value = cobros.ultimoCobro(cargo.cargoId)?.let { CobroAAnular(cargo, it) }
+        }
+    }
+
+    fun cerrarAnulacion() {
+        _anulacion.value = null
+    }
+
+    fun confirmarAnulacion() {
+        val pedido = _anulacion.value ?: return
+        _anulacion.value = null
+        anular(pedido.cobro.id)
+    }
+
+    private fun anular(cobroId: Long) = ejecutar({ cobros.anular(cobroId) }) {
+        avisar(Aviso.Exito(R.string.aviso_cobro_anulado))
     }
 
     private companion object {

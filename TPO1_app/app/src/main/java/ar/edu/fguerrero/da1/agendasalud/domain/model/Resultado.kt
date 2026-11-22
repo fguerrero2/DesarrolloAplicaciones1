@@ -12,6 +12,9 @@ sealed interface ErrorDominio {
     data object MontoNoPositivo : ErrorDominio
     data object MontoSuperaPendiente : ErrorDominio
     data object EstadoNoPermitido : ErrorDominio
+
+    /** No se puede deshacer "Completar sesión" porque ya tiene cobros registrados. */
+    data object TieneCobros : ErrorDominio
     data object NoEncontrado : ErrorDominio
     data object ErrorGuardado : ErrorDominio
     data object ErrorLectura : ErrorDominio

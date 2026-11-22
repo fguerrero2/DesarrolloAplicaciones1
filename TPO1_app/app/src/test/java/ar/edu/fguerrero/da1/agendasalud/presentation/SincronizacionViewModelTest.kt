@@ -33,6 +33,7 @@ class SincronizacionViewModelTest {
     /** Repositorio falso: cada sincronización queda pendiente hasta que el test la termina. */
     private class SincronizacionFalsa : SincronizacionRepository {
         override val estado = MutableStateFlow<EstadoSincronizacion>(EstadoSincronizacion.NuncaSincronizado)
+        override val conectado = MutableStateFlow(true)
         var pedidos = 0
         var pendiente = CompletableDeferred<EstadoSincronizacion>()
 
@@ -126,6 +127,17 @@ class SincronizacionViewModelTest {
         repo.pendiente.complete(EstadoSincronizacion.AlDia(2L))
         assertEquals(2, repo.pedidos)
         assertEquals(ResultadoSincronizacion.Exito, vm.resultados.first())
+    }
+
+    @Test
+    fun s09_sinInternetSeMuestraElAvisoDeModoSinConexion() = runTest {
+        val vm = crear()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.sinConexion.collect {} }
+        assertFalse(vm.sinConexion.value)
+        repo.conectado.value = false
+        assertTrue(vm.sinConexion.value)
+        repo.conectado.value = true
+        assertFalse(vm.sinConexion.value)
     }
 
     @Test

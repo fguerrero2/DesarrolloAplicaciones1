@@ -12,6 +12,7 @@ import ar.edu.fguerrero.da1.agendasalud.domain.repository.TurnoRepository
 import ar.edu.fguerrero.da1.agendasalud.presentation.comun.Aviso
 import ar.edu.fguerrero.da1.agendasalud.presentation.comun.EstadoUi
 import ar.edu.fguerrero.da1.agendasalud.presentation.comun.ViewModelConAvisos
+import ar.edu.fguerrero.da1.agendasalud.presentation.navegacion.PedidosNavegacion
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
@@ -43,7 +44,13 @@ class PacientesViewModel @Inject constructor(
     private val turnos: TurnoRepository,
     private val cobros: CobroRepository,
     private val estadoGuardado: SavedStateHandle,
+    private val pedidos: PedidosNavegacion,
 ) : ViewModelConAvisos() {
+
+    /** Otra pantalla pidió abrir el alta de paciente (ver PedidosNavegacion). */
+    val nuevoPacientePedido: StateFlow<Boolean> = pedidos.nuevoPaciente
+
+    fun nuevoPacienteAtendido() = pedidos.nuevoPacienteAtendido()
 
     // Búsqueda, filtro y ficha abierta se guardan en el SavedStateHandle: sobreviven a la
     // rotación y a que Android mate el proceso mientras la app está en segundo plano.

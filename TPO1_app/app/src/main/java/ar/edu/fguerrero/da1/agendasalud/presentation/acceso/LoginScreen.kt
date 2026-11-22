@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -40,7 +41,6 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -50,6 +50,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ar.edu.fguerrero.da1.agendasalud.R
 import ar.edu.fguerrero.da1.agendasalud.core.security.Autenticador
 import ar.edu.fguerrero.da1.agendasalud.presentation.AgendaSaludLogo
+import ar.edu.fguerrero.da1.agendasalud.presentation.comun.CampoContrasenia
 import ar.edu.fguerrero.da1.agendasalud.presentation.comun.TextoError
 
 /** Wireframe 01 · Acceso protegido: ingreso, registro y recuperación de contraseña por email. */
@@ -109,36 +110,47 @@ fun LoginScreen(modifier: Modifier = Modifier, viewModel: LoginViewModel = hiltV
             }
             explicacion?.let { Text(stringResource(it), style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center) }
 
+            val enviar = {
+                if (!estado.procesando) {
+                    when (modo) {
+                        ModoAcceso.INGRESAR -> viewModel.ingresar(email, contrasenia)
+                        ModoAcceso.REGISTRARSE -> viewModel.crearUsuario(email, contrasenia, confirmacion)
+                        ModoAcceso.RECUPERAR -> viewModel.pedirRecuperacion(email)
+                        ModoAcceso.NUEVA_CONTRASENIA -> viewModel.restablecer(contrasenia, confirmacion)
+                    }
+                }
+            }
+            // El último campo del formulario envía con la tecla Enter del teclado
+            val conConfirmacion = modo == ModoAcceso.REGISTRARSE || modo == ModoAcceso.NUEVA_CONTRASENIA
+
             if (modo != ModoAcceso.NUEVA_CONTRASENIA) {
                 OutlinedTextField(
                     value = email,
                     onValueChange = { email = it },
                     label = { Text(stringResource(R.string.login_email)) },
                     singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Email,
+                        imeAction = if (modo == ModoAcceso.RECUPERAR) ImeAction.Done else ImeAction.Next,
+                    ),
+                    keyboardActions = KeyboardActions(onDone = { enviar() }),
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
             if (modo != ModoAcceso.RECUPERAR) {
-                OutlinedTextField(
-                    value = contrasenia,
-                    onValueChange = { contrasenia = it },
-                    label = { Text(stringResource(if (modo == ModoAcceso.NUEVA_CONTRASENIA) R.string.restablecer_nueva else R.string.login_contrasenia)) },
-                    singleLine = true,
-                    visualTransformation = PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                    modifier = Modifier.fillMaxWidth(),
+                CampoContrasenia(
+                    valor = contrasenia,
+                    alCambiar = { contrasenia = it },
+                    etiqueta = stringResource(if (modo == ModoAcceso.NUEVA_CONTRASENIA) R.string.restablecer_nueva else R.string.login_contrasenia),
+                    alEnviar = if (conConfirmacion) null else enviar,
                 )
             }
-            if (modo == ModoAcceso.REGISTRARSE || modo == ModoAcceso.NUEVA_CONTRASENIA) {
-                OutlinedTextField(
-                    value = confirmacion,
-                    onValueChange = { confirmacion = it },
-                    label = { Text(stringResource(R.string.login_confirmar)) },
-                    singleLine = true,
-                    visualTransformation = PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                    modifier = Modifier.fillMaxWidth(),
+            if (conConfirmacion) {
+                CampoContrasenia(
+                    valor = confirmacion,
+                    alCambiar = { confirmacion = it },
+                    etiqueta = stringResource(R.string.login_confirmar),
+                    alEnviar = enviar,
                 )
             }
 
@@ -146,14 +158,7 @@ fun LoginScreen(modifier: Modifier = Modifier, viewModel: LoginViewModel = hiltV
             TextoError(estado.error?.let { stringResource(it) } ?: estado.errorDispositivo)
 
             Button(
-                onClick = {
-                    when (modo) {
-                        ModoAcceso.INGRESAR -> viewModel.ingresar(email, contrasenia)
-                        ModoAcceso.REGISTRARSE -> viewModel.crearUsuario(email, contrasenia, confirmacion)
-                        ModoAcceso.RECUPERAR -> viewModel.pedirRecuperacion(email)
-                        ModoAcceso.NUEVA_CONTRASENIA -> viewModel.restablecer(contrasenia, confirmacion)
-                    }
-                },
+                onClick = enviar,
                 enabled = !estado.procesando,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
             ) {

@@ -1,7 +1,9 @@
 package ar.edu.fguerrero.da1.agendasalud.presentation.comun
 
 import androidx.annotation.StringRes
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -29,7 +31,15 @@ import kotlinx.coroutines.launch
 
 /** Mensaje de una sola vez para mostrar en el snackbar. */
 sealed interface Aviso {
-    data class Exito(@param:StringRes val texto: Int, val args: List<Any> = emptyList()) : Aviso
+    /**
+     * [deshacer]: si no es null, el snackbar ofrece "Deshacer" (Nielsen H3, control y libertad del
+     * usuario) y dura más, para dar tiempo a tocarlo.
+     */
+    data class Exito(
+        @param:StringRes val texto: Int,
+        val args: List<Any> = emptyList(),
+        val deshacer: (() -> Unit)? = null,
+    ) : Aviso
     data class Error(val error: ErrorDominio) : Aviso
 }
 
@@ -119,7 +129,17 @@ fun MostrarAvisos(avisos: Flow<Aviso>) {
                 is Aviso.Exito -> recursos.getString(aviso.texto, *aviso.args.toTypedArray())
                 is Aviso.Error -> recursos.getString(aviso.error.mensaje())
             }
-            snackbar.showSnackbar(texto)
+            val deshacer = (aviso as? Aviso.Exito)?.deshacer
+            if (deshacer == null) {
+                snackbar.showSnackbar(texto)
+            } else {
+                val resultado = snackbar.showSnackbar(
+                    message = texto,
+                    actionLabel = recursos.getString(R.string.deshacer),
+                    duration = SnackbarDuration.Long,
+                )
+                if (resultado == SnackbarResult.ActionPerformed) deshacer()
+            }
         }
     }
 }
@@ -136,6 +156,7 @@ fun ErrorDominio.mensaje(): Int = when (this) {
     ErrorDominio.MontoNoPositivo -> R.string.error_monto_no_positivo
     ErrorDominio.MontoSuperaPendiente -> R.string.error_monto_supera_pendiente
     ErrorDominio.EstadoNoPermitido -> R.string.error_estado_no_permitido
+    ErrorDominio.TieneCobros -> R.string.error_tiene_cobros
     ErrorDominio.NoEncontrado -> R.string.error_no_encontrado
     ErrorDominio.ErrorGuardado -> R.string.error_guardado
     ErrorDominio.ErrorLectura -> R.string.error_lectura
