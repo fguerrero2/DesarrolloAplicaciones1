@@ -1,6 +1,7 @@
 package ar.edu.fguerrero.da1.agendasalud.data.repository
 
 import android.content.Context
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
@@ -30,7 +31,14 @@ class PreferenciasRepositoryImpl @Inject constructor(@param:ApplicationContext p
         context.preferencias.edit { it[IMPORTE] = centavos }
     }
 
+    override val guiaVista: Flow<Boolean> = context.preferencias.data.map { it[GUIA_VISTA] ?: false }
+
+    override suspend fun marcarGuiaVista() {
+        context.preferencias.edit { it[GUIA_VISTA] = true }
+    }
+
     private companion object {
+        val GUIA_VISTA = booleanPreferencesKey("guia_vista")
         val DURACION = intPreferencesKey("duracion_minutos")
         val IMPORTE = longPreferencesKey("importe_centavos")
         const val DURACION_DEFECTO = 60

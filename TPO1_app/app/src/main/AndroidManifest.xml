@@ -4,6 +4,8 @@
 
     <!-- Solo para sincronizar con el backend. Ningún permiso peligroso. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Para mostrar el modo sin conexión -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <application
         android:name=".AgendaSaludApp"

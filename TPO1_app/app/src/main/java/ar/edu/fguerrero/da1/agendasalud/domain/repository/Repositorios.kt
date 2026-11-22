@@ -3,6 +3,7 @@ package ar.edu.fguerrero.da1.agendasalud.domain.repository
 import ar.edu.fguerrero.da1.agendasalud.domain.model.BloqueoAgenda
 import ar.edu.fguerrero.da1.agendasalud.domain.model.CargoPendiente
 import ar.edu.fguerrero.da1.agendasalud.domain.model.CargoSesion
+import ar.edu.fguerrero.da1.agendasalud.domain.model.Cobro
 import ar.edu.fguerrero.da1.agendasalud.domain.model.EstadoSincronizacion
 import ar.edu.fguerrero.da1.agendasalud.domain.model.MedioCobro
 import ar.edu.fguerrero.da1.agendasalud.domain.model.Paciente
@@ -33,6 +34,15 @@ interface TurnoRepository {
 
     /** Marca el turno completado y crea su CargoSesion de forma atómica. */
     suspend fun completar(turnoId: Long): Resultado<CargoSesion>
+
+    /**
+     * Deshace "Completar sesión": el turno vuelve a programado y se borra su cargo. Solo si todavía
+     * no tiene cobros (si los tiene, primero hay que anularlos).
+     */
+    suspend fun deshacerCompletar(turnoId: Long): Resultado<Unit>
+
+    /** Deshace una cancelación: el turno vuelve a programado si su horario sigue libre. */
+    suspend fun reactivar(turnoId: Long): Resultado<Unit>
     fun observarCancelacionesDelAnio(pacienteId: Long, anio: Int): Flow<Int>
 }
 
@@ -53,6 +63,12 @@ interface CobroRepository {
     fun observarSaldoPaciente(pacienteId: Long): Flow<Long>
     suspend fun obtenerCargoDeTurno(turnoId: Long): CargoPendiente?
 
+    /** El último cobro registrado de un cargo (el que se puede anular). */
+    suspend fun ultimoCobro(cargoId: Long): Cobro?
+
+    /** Anula (borra) un cobro cargado por error. El saldo vuelve a calcularse solo. */
+    suspend fun anular(cobroId: Long): Resultado<Unit>
+
     /** Comprueba el pendiente e inserta el pago en una transacción. */
     suspend fun registrar(
         cargoId: Long,
@@ -68,6 +84,10 @@ interface PreferenciasRepository {
     val importePredeterminadoCentavos: Flow<Long>
     suspend fun guardarDuracionPredeterminada(minutos: Int)
     suspend fun guardarImportePredeterminado(centavos: Long)
+
+    /** Si ya se mostró la guía de bienvenida en este celular. */
+    val guiaVista: Flow<Boolean>
+    suspend fun marcarGuiaVista()
 }
 
 /**
@@ -116,6 +136,9 @@ data class Restablecimiento(val email: String, val datosConservados: Boolean)
 /** Sincronización en segundo plano con el backend. Room sigue siendo la fuente de verdad. */
 interface SincronizacionRepository {
     val estado: Flow<EstadoSincronizacion>
+
+    /** Si el celular tiene conexión a internet en este momento. */
+    val conectado: Flow<Boolean>
 
     /** Programa la sincronización según el calendario del servidor y sincroniza si nunca se hizo. */
     suspend fun alAbrirLaApp()

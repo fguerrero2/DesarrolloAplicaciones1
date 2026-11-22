@@ -166,9 +166,12 @@ class SincronizacionRepositoryImpl @Inject constructor(
     private val almacen: AlmacenCuenta,
     private val db: AgendaDatabase,
     @param:AlcanceApp private val alcanceApp: CoroutineScope,
+    private val monitorConexion: MonitorConexion,
 ) : SincronizacionRepository {
 
     override val estado: Flow<EstadoSincronizacion> = sincronizador.estado
+
+    override val conectado: Flow<Boolean> = monitorConexion.conectado
 
     override suspend fun alAbrirLaApp() {
         programador.programarSegunServidor()

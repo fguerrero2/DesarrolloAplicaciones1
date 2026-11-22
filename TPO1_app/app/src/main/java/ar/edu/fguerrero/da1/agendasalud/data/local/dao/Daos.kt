@@ -120,6 +120,18 @@ interface CobroDao {
     @Insert
     suspend fun insertarCobro(cobro: CobroEntity): Long
 
+    @Query("SELECT * FROM cobros WHERE cargoId = :cargoId ORDER BY id DESC LIMIT 1")
+    suspend fun ultimoCobro(cargoId: Long): CobroEntity?
+
+    @Query("SELECT * FROM cobros WHERE id = :id")
+    suspend fun cobro(id: Long): CobroEntity?
+
+    @Query("DELETE FROM cobros WHERE id = :id")
+    suspend fun eliminarCobro(id: Long): Int
+
+    @Query("DELETE FROM cargos_sesion WHERE id = :id")
+    suspend fun eliminarCargo(id: Long): Int
+
     @Query(
         """
         SELECT c.id AS cargoId, c.turnoId, t.pacienteId, p.nombre AS nombrePaciente, t.inicio AS fechaSesion,

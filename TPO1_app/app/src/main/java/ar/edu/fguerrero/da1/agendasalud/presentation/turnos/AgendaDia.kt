@@ -46,6 +46,7 @@ import ar.edu.fguerrero.da1.agendasalud.presentation.comun.Encabezado
 import ar.edu.fguerrero.da1.agendasalud.presentation.comun.ErrorCarga
 import ar.edu.fguerrero.da1.agendasalud.presentation.comun.EstadoUi
 import ar.edu.fguerrero.da1.agendasalud.presentation.comun.IndicadorCarga
+import ar.edu.fguerrero.da1.agendasalud.presentation.comun.LocalAccionesCuenta
 import ar.edu.fguerrero.da1.agendasalud.presentation.comun.datosOrNull
 import ar.edu.fguerrero.da1.agendasalud.presentation.comun.EstiloTarjeta
 import ar.edu.fguerrero.da1.agendasalud.presentation.comun.MostrarAvisos
@@ -94,6 +95,8 @@ private fun AgendaDia(viewModel: AgendaDiaViewModel, esHoy: Boolean, modifier: M
     var cancelandoId by rememberSaveable { mutableStateOf<Long?>(null) }
     var bloqueando by rememberSaveable { mutableStateOf(false) }
     var bloqueoAEliminarId by rememberSaveable { mutableStateOf<Long?>(null) }
+    var completandoId by rememberSaveable { mutableStateOf<Long?>(null) }
+    val cargarPaciente = LocalAccionesCuenta.current?.cargarPaciente ?: {}
 
     // Se toma de la lista actual para que el panel refleje cambios de estado al instante
     val seleccionado = turnoDelDia(turnoSeleccionadoId)
@@ -112,6 +115,15 @@ private fun AgendaDia(viewModel: AgendaDiaViewModel, esHoy: Boolean, modifier: M
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             // when exhaustivo sobre la jerarquía sellada: cargando, error o contenido
+            // Primer paso visible cuando todavía no hay pacientes (Nielsen H10)
+            if (datos != null && datos.pacientesActivos.isEmpty()) {
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(stringResource(R.string.hoy_primer_paso))
+                        BotonAncho(stringResource(R.string.turno_cargar_paciente), onClick = cargarPaciente)
+                    }
+                }
+            }
             when (estado) {
                 EstadoUi.Cargando -> item { IndicadorCarga() }
                 EstadoUi.Error -> item { ErrorCarga(alReintentar = viewModel::reintentar) }
@@ -208,6 +220,10 @@ private fun AgendaDia(viewModel: AgendaDiaViewModel, esHoy: Boolean, modifier: M
                     if (error == null) nuevoTurnoEn = null
                 }
             },
+            alCargarPaciente = {
+                nuevoTurnoEn = null
+                cargarPaciente()
+            },
             alCerrar = { nuevoTurnoEn = null },
         )
     }
@@ -217,7 +233,11 @@ private fun AgendaDia(viewModel: AgendaDiaViewModel, esHoy: Boolean, modifier: M
             item = item,
             alCompletar = {
                 turnoSeleccionadoId = null
-                viewModel.completar(item.turno.id)
+                completandoId = item.turno.id
+            },
+            alDeshacerCompletar = {
+                turnoSeleccionadoId = null
+                viewModel.deshacerCompletar(item.turno.id)
             },
             alRegistrarCobro = {
                 turnoSeleccionadoId = null
@@ -245,6 +265,17 @@ private fun AgendaDia(viewModel: AgendaDiaViewModel, esHoy: Boolean, modifier: M
                 }
             },
             alCerrar = { reprogramandoId = null },
+        )
+    }
+
+    turnoDelDia(completandoId)?.let { item ->
+        CompletarSesionDialog(
+            item = item,
+            alConfirmar = {
+                completandoId = null
+                viewModel.completar(item.turno.id)
+            },
+            alCerrar = { completandoId = null },
         )
     }
 
@@ -291,7 +322,7 @@ private fun AgendaDia(viewModel: AgendaDiaViewModel, esHoy: Boolean, modifier: M
             text = { Text(textoBloqueo(bloqueo)) },
             confirmButton = {
                 TextButton(onClick = {
-                    viewModel.eliminarBloqueo(bloqueo.id)
+                    viewModel.eliminarBloqueo(bloqueo)
                     bloqueoAEliminarId = null
                 }) { Text(stringResource(R.string.bloqueo_quitar)) }
             },

@@ -79,6 +79,6 @@ fun BloquearPeriodoDialog(
                 }
             }) { Text(stringResource(R.string.bloqueo_guardar)) }
         },
-        dismissButton = { TextButton(onClick = alCerrar) { Text(stringResource(R.string.cancelar)) } },
+        dismissButton = { TextButton(onClick = alCerrar) { Text(stringResource(R.string.volver)) } },
     )
 }

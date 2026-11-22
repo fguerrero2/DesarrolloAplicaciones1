@@ -41,8 +41,10 @@ import ar.edu.fguerrero.da1.agendasalud.core.util.parsearPesos
 import ar.edu.fguerrero.da1.agendasalud.core.util.pesosParaEditar
 import ar.edu.fguerrero.da1.agendasalud.domain.model.ErrorDominio
 import ar.edu.fguerrero.da1.agendasalud.domain.model.EstadoTurno
+import ar.edu.fguerrero.da1.agendasalud.domain.model.Intervalo
 import ar.edu.fguerrero.da1.agendasalud.domain.model.Paciente
 import ar.edu.fguerrero.da1.agendasalud.domain.model.TurnoConPaciente
+import ar.edu.fguerrero.da1.agendasalud.domain.rules.HorarioAtencion
 import ar.edu.fguerrero.da1.agendasalud.presentation.comun.BotonAncho
 import ar.edu.fguerrero.da1.agendasalud.presentation.comun.CampoFecha
 import ar.edu.fguerrero.da1.agendasalud.presentation.comun.CampoHora
@@ -63,6 +65,7 @@ fun NuevoTurnoDialog(
     duracionInicial: Int,
     importeInicial: Long,
     alGuardar: (pacienteId: Long, inicio: LocalDateTime, duracion: Int, importe: Long, alTerminar: (ErrorDominio?) -> Unit) -> Unit,
+    alCargarPaciente: () -> Unit,
     alCerrar: () -> Unit,
 ) {
     // rememberSaveable: lo cargado no se pierde al girar la pantalla. Del paciente se guarda el id
@@ -75,19 +78,24 @@ fun NuevoTurnoDialog(
     var importe by rememberSaveable { mutableStateOf(if (importeInicial > 0) pesosParaEditar(importeInicial) else "") }
     var error by rememberSaveable { mutableStateOf<Int?>(null) }
     var guardando by remember { mutableStateOf(false) }
+    val fueraDeHorario = fueraDeHorario(fecha.atTime(hora), duracion.toIntOrNull())
 
     AlertDialog(
         onDismissRequest = alCerrar,
         title = { Text(stringResource(R.string.turno_nuevo_titulo)) },
         text = {
             if (pacientes.isEmpty()) {
-                Text(stringResource(R.string.turno_sin_pacientes))
+                // Sin callejón sin salida: el botón lleva directo al alta de paciente
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(stringResource(R.string.turno_sin_pacientes))
+                    BotonAncho(stringResource(R.string.turno_cargar_paciente), onClick = alCargarPaciente)
+                }
                 return@AlertDialog
             }
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 SelectorPaciente(pacientes, paciente) { pacienteId = it.id }
                 CampoFecha(stringResource(R.string.campo_fecha), fecha, soloDiasDeAtencion = true) { fecha = it }
-                CampoHora(stringResource(R.string.campo_hora), hora) { hora = it }
+                CampoHora(stringResource(R.string.campo_hora), hora, franja = HorarioAtencion.franja(fecha)) { hora = it }
                 OutlinedTextField(
                     value = duracion,
                     onValueChange = { duracion = it.filter(Char::isDigit) },
@@ -105,13 +113,17 @@ fun NuevoTurnoDialog(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.fillMaxWidth(),
                 )
-                TextoError(error?.let { stringResource(it) })
+                // Se avisa antes de guardar si la sesión termina después del cierre (Nielsen H5)
+                TextoError(
+                    error?.let { stringResource(it) }
+                        ?: if (fueraDeHorario) stringResource(R.string.error_fuera_de_horario) else null
+                )
             }
         },
         confirmButton = {
             if (pacientes.isNotEmpty()) {
                 TextButton(
-                    enabled = !guardando,
+                    enabled = !guardando && !fueraDeHorario,
                     onClick = {
                         val elegido = paciente
                         val minutos = duracion.toIntOrNull()
@@ -133,7 +145,7 @@ fun NuevoTurnoDialog(
                 ) { Text(stringResource(R.string.turno_guardar)) }
             }
         },
-        dismissButton = { TextButton(onClick = alCerrar) { Text(stringResource(R.string.cancelar)) } },
+        dismissButton = { TextButton(onClick = alCerrar) { Text(stringResource(R.string.volver)) } },
     )
 }
 
@@ -143,6 +155,7 @@ fun NuevoTurnoDialog(
 fun AccionesTurnoSheet(
     item: TurnoConPaciente,
     alCompletar: () -> Unit,
+    alDeshacerCompletar: () -> Unit,
     alRegistrarCobro: () -> Unit,
     alReprogramar: () -> Unit,
     alCancelar: () -> Unit,
@@ -170,7 +183,12 @@ fun AccionesTurnoSheet(
                     BotonAncho(stringResource(R.string.turno_reprogramar), onClick = alReprogramar)
                     BotonAncho(stringResource(R.string.turno_cancelar), onClick = alCancelar)
                 }
-                EstadoTurno.COMPLETADO -> BotonAncho(stringResource(R.string.turno_registrar_cobro), onClick = alRegistrarCobro)
+                EstadoTurno.COMPLETADO -> {
+                    BotonAncho(stringResource(R.string.turno_registrar_cobro), onClick = alRegistrarCobro)
+                    // Salida si se completó por error (Nielsen H3)
+                    BotonAncho(stringResource(R.string.turno_deshacer_completar), onClick = alDeshacerCompletar)
+                    Text(stringResource(R.string.turno_deshacer_completar_ayuda), style = MaterialTheme.typography.bodySmall)
+                }
                 EstadoTurno.CANCELADO -> Unit
             }
         }
@@ -188,6 +206,7 @@ fun ReprogramarDialog(
     var hora by rememberSaveable { mutableStateOf(item.turno.inicio.toLocalTime()) }
     var error by rememberSaveable { mutableStateOf<Int?>(null) }
     var guardando by remember { mutableStateOf(false) }
+    val fueraDeHorario = fueraDeHorario(fecha.atTime(hora), item.turno.duracionMinutos)
 
     AlertDialog(
         onDismissRequest = alCerrar,
@@ -196,12 +215,15 @@ fun ReprogramarDialog(
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(stringResource(R.string.turno_reprogramar_actual, item.nombrePaciente, formatearFechaNumerica(item.turno.inicio), formatearHora(item.turno.inicio)))
                 CampoFecha(stringResource(R.string.campo_nueva_fecha), fecha, soloDiasDeAtencion = true) { fecha = it }
-                CampoHora(stringResource(R.string.campo_nueva_hora), hora) { hora = it }
-                TextoError(error?.let { stringResource(it) })
+                CampoHora(stringResource(R.string.campo_nueva_hora), hora, franja = HorarioAtencion.franja(fecha)) { hora = it }
+                TextoError(
+                    error?.let { stringResource(it) }
+                        ?: if (fueraDeHorario) stringResource(R.string.error_fuera_de_horario) else null
+                )
             }
         },
         confirmButton = {
-            TextButton(enabled = !guardando, onClick = {
+            TextButton(enabled = !guardando && !fueraDeHorario, onClick = {
                 guardando = true
                 alGuardar(fecha.atTime(hora)) { e ->
                     guardando = false
@@ -209,8 +231,35 @@ fun ReprogramarDialog(
                 }
             }) { Text(stringResource(R.string.guardar_cambio)) }
         },
-        dismissButton = { TextButton(onClick = alCerrar) { Text(stringResource(R.string.cancelar)) } },
+        dismissButton = { TextButton(onClick = alCerrar) { Text(stringResource(R.string.volver)) } },
     )
+}
+
+/** Confirmación de "Completar sesión": genera un cargo, así que no se hace con un solo toque (Nielsen H5). */
+@Composable
+fun CompletarSesionDialog(item: TurnoConPaciente, alConfirmar: () -> Unit, alCerrar: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = alCerrar,
+        title = { Text(stringResource(R.string.turno_completar)) },
+        text = {
+            Text(
+                stringResource(
+                    R.string.turno_completar_pregunta,
+                    item.nombrePaciente,
+                    formatearHora(item.turno.inicio),
+                    formatearPesos(item.turno.importeCentavos),
+                )
+            )
+        },
+        confirmButton = { TextButton(onClick = alConfirmar) { Text(stringResource(R.string.turno_completar)) } },
+        dismissButton = { TextButton(onClick = alCerrar) { Text(stringResource(R.string.volver)) } },
+    )
+}
+
+/** true si el turno empieza o termina fuera del horario de atención de ese día. */
+private fun fueraDeHorario(inicio: LocalDateTime, duracionMinutos: Int?): Boolean {
+    if (duracionMinutos == null || duracionMinutos <= 0) return false
+    return !HorarioAtencion.contiene(Intervalo(inicio, inicio.plusMinutes(duracionMinutos.toLong())))
 }
 
 /** Wireframe 20 · Cancelar turno. */

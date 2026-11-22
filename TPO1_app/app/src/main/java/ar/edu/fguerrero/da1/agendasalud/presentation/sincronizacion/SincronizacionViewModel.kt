@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -66,6 +67,10 @@ class SincronizacionViewModel @Inject constructor(
     val sincronizando: StateFlow<Boolean> =
         combine(estado, pedidoEnCurso) { e, pedido -> pedido || e == EstadoSincronizacion.Sincronizando }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    /** Sin internet: la pantalla muestra el aviso de modo sin conexión (Nielsen H1). */
+    val sinConexion: StateFlow<Boolean> = sincronizacion.conectado.map { !it }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     private val canalResultados = Channel<ResultadoSincronizacion>(Channel.BUFFERED)
     val resultados: Flow<ResultadoSincronizacion> = canalResultados.receiveAsFlow()

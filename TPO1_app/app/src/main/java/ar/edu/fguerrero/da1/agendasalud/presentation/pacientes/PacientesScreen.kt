@@ -73,6 +73,15 @@ fun PacientesScreen(modifier: Modifier = Modifier, viewModel: PacientesViewModel
         if (id == 0L) Paciente(nombre = "") else lista.firstOrNull { it.paciente.id == id }?.paciente
     }
 
+    // Pedido desde otra pantalla ("Cargar paciente" en un estado vacío): se abre el alta
+    val nuevoPedido by viewModel.nuevoPacientePedido.collectAsStateWithLifecycle()
+    LaunchedEffect(nuevoPedido) {
+        if (nuevoPedido) {
+            editandoId = 0L
+            viewModel.nuevoPacienteAtendido()
+        }
+    }
+
     // Al cerrar un diálogo el foco vuelve al buscador y abriría el teclado sin que nadie lo pida
     val foco = LocalFocusManager.current
     LaunchedEffect(editandoId, fichaDe) {
@@ -263,7 +272,7 @@ private fun PacienteDialog(
                 }
             }) { Text(stringResource(R.string.guardar)) }
         },
-        dismissButton = { TextButton(onClick = alCerrar) { Text(stringResource(R.string.cancelar)) } },
+        dismissButton = { TextButton(onClick = alCerrar) { Text(stringResource(R.string.volver)) } },
     )
 }
 

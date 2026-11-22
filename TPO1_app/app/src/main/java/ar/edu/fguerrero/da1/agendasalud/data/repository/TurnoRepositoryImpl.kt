@@ -70,6 +70,25 @@ class TurnoRepositoryImpl @Inject constructor(private val db: AgendaDatabase) : 
         cargo.copy(id = cobroDao.insertarCargo(cargo)).aDominio()
     }
 
+    override suspend fun deshacerCompletar(turnoId: Long): Resultado<Unit> = db.transaccion {
+        val actual = turnoDao.obtener(turnoId)?.aDominio() ?: fallar(ErrorDominio.NoEncontrado)
+        if (actual.estado != EstadoTurno.COMPLETADO) fallar(ErrorDominio.EstadoNoPermitido)
+        val cargo = cobroDao.cargoDeTurno(turnoId)
+        if (cargo != null) {
+            if (cobroDao.cobrosDeCargo(cargo.id).isNotEmpty()) fallar(ErrorDominio.TieneCobros)
+            cobroDao.eliminarCargo(cargo.id)
+        }
+        turnoDao.actualizar(actual.copy(estado = EstadoTurno.PROGRAMADO).aEntidad())
+    }
+
+    override suspend fun reactivar(turnoId: Long): Resultado<Unit> = db.transaccion {
+        val actual = turnoDao.obtener(turnoId)?.aDominio() ?: fallar(ErrorDominio.NoEncontrado)
+        if (actual.estado != EstadoTurno.CANCELADO) fallar(ErrorDominio.EstadoNoPermitido)
+        // Mientras estuvo cancelado, otro turno o un bloqueo pudo ocupar el horario
+        validarHorario(actual.intervalo, excluirTurnoId = turnoId)
+        turnoDao.actualizar(actual.copy(estado = EstadoTurno.PROGRAMADO, motivoCancelacion = null).aEntidad())
+    }
+
     override fun observarCancelacionesDelAnio(pacienteId: Long, anio: Int): Flow<Int> {
         val desde = LocalDate.of(anio, 1, 1).atStartOfDay()
         return turnoDao.observarCanceladosEntre(pacienteId, desde, desde.plusYears(1))

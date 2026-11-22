@@ -104,6 +104,6 @@ fun RegistrarCobroDialog(
                 },
             ) { Text(stringResource(R.string.cobro_confirmar)) }
         },
-        dismissButton = { TextButton(onClick = alCerrar) { Text(stringResource(R.string.cancelar)) } },
+        dismissButton = { TextButton(onClick = alCerrar) { Text(stringResource(R.string.volver)) } },
     )
 }
