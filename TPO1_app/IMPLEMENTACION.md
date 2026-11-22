@@ -84,16 +84,18 @@ En compus de bajo consumo (por ejemplo MacBook Air con i5 de 2 núcleos) el emul
 - **No compilar con Gradle mientras el emulador está corriendo** (compilar, cerrar Gradle con `./gradlew --stop`, recién ahí abrir el emulador).
 - Alternativas sin emulador: un celular Android por USB, o *Device Streaming* (Android Studio → Device Manager → Firebase).
 
-### Backend local
+### Backend
 
-La app en debug se conecta a `http://10.0.2.2:8000/` (la compu vista desde el emulador), que es donde corre el backend de Francisco con Docker:
+Por defecto la app (debug y release) se conecta al backend desplegado en Vercel: `https://agendasalud-backend.vercel.app/` (`urlVercel` en `app/build.gradle.kts`).
+
+Para probar contra el backend local de Francisco (Docker), agregar `backendLocal=true` en `local.properties` (o compilar con `-PbackendLocal=true`). Así el build debug usa `http://10.0.2.2:8000/` (la compu vista desde el emulador):
 
 ```bash
 cd TPO1_backend
 docker compose up -d        # API en el puerto 8000 + MongoDB
 ```
 
-Ver `TPO1_backend/README.md`. Para release, poner la URL de Vercel en `URL_SERVIDOR` (`app/build.gradle.kts`).
+Ver `TPO1_backend/README.md`.
 
 ### Usuario de prueba
 
