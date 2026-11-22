@@ -201,6 +201,19 @@ Capturas tomadas del emulador durante la prueba manual (`docs/capturas/`).
 - La app **nunca espera a la red**: todo se guarda primero en Room.
 - Detalle técnico en §4.1.
 
+**Información al usuario (heurísticas de Nielsen)**
+
+| Heurística | Qué hace la app |
+|---|---|
+| H1 Visibilidad del estado del sistema | Mientras sincroniza, se ve un indicador de progreso junto al menú ⋮ en todas las pantallas, también en las sincronizaciones automáticas. TalkBack lo anuncia. En el menú, la opción pasa a *Sincronizando…* |
+| H5 Prevención de errores | Mientras sincroniza, *Sincronizar ahora* queda deshabilitada y un doble toque no duplica el pedido |
+| H1 + H2 Resultado en lenguaje del usuario | Al terminar *Sincronizar ahora* aparece un snackbar: *Sincronización completa: tus datos están al día* o la causa del error (sin conexión, sesión vencida o problema del servidor), sin términos técnicos |
+| H9 Reconocer y recuperarse de errores | Cada mensaje de error aclara que **los datos siguen guardados en el celular** y qué hacer. Sin conexión, la sincronización queda encolada y se hace sola cuando vuelve la red |
+| H3 Control y libertad | Los errores ofrecen **Reintentar** cuando sirve, y siempre se pueden cerrar con ✕ |
+| H8 Diseño minimalista | Los snackbars de resultado aparecen solo cuando el usuario pidió sincronizar; las automáticas no interrumpen. Su estado queda en el menú ⋮ |
+
+*Sincronizar ahora* llama directamente al `Sincronizador` en el alcance de la app (`@AlcanceApp`), para conocer el resultado. Sigue aunque se cambie de pantalla y no se superpone con el trabajo automático porque el `Sincronizador` tiene un mutex. Tests: `SincronizacionViewModelTest` (S-01 a S-08).
+
 ### 3.9 Mapa de navegación
 
 ```mermaid
@@ -606,8 +619,9 @@ Todas en `domain/rules/` (Kotlin puro, con tests).
 | `data/AgendaDatabaseTest` (3) | Instrumentado | Archivo cifrado, superposición en transacción, cobro RF04 y completar idempotente | `./gradlew :app:connectedDebugAndroidTest` |
 | `domain/usecase/CasosDeUsoTest` (21) | JVM + MockRepository | CP-01 a CP-21: reservar (paciente inexistente/inactivo, superposición, contiguos, fuera de horario, bloqueos), cancelar libera el horario, reprogramar conserva la fecha original, completar sin duplicar el cargo, cobro parcial y total, montos inválidos, falla de guardado | `./gradlew :app:testDebugUnitTest` |
 | `presentation/ViewModelsConMockTest` (14) | JVM + MockRepository | VM-01 a VM-14: lo que muestran Agenda/Hoy, Pacientes y Cobros (EstadoUi y avisos) al reservar, completar, cobrar, reprogramar (borrador de WhatsApp), buscar con debounce, desactivar, filtrar pendientes; error de lectura con reintento y error de guardado | idem |
+| `presentation/SincronizacionViewModelTest` (8) | JVM | S-01 a S-08: indicador mientras sincroniza, aviso de éxito, causa de cada error con o sin Reintentar, doble toque, reintento, automáticas sin snackbar | idem |
 
-**Resultado actual:** 72/72 JVM ✅ · instrumentados: 3, corridos antes de Hilt y de separar las Activities (**hay que volver a correrlos**) · lint sin errores · build release con R8 ✅.
+**Resultado actual:** 80/80 JVM ✅ · instrumentados: 3, corridos antes de Hilt y de separar las Activities (**hay que volver a correrlos**) · lint sin errores · build release con R8 ✅.
 
 **MockRepository** (`app/src/test/…/mock/MockRepository.kt`): implementa en memoria las interfaces de `domain/repository` (pacientes, turnos, bloqueos, cobros y preferencias) aplicando las mismas reglas que los repositorios de Room. Permite probar casos de uso y ViewModels en la JVM, en segundos y sin emulador. Con `fallarEscrituras` y `fallarLecturas` simula errores de la base, y `operaciones` registra qué escrituras recibió. Para comprobar que los tests detectan modificaciones, se cambió el cierre del horario de 18 a 19 h y fallaron 5.
 

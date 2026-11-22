@@ -33,6 +33,7 @@ import ar.edu.fguerrero.da1.agendasalud.presentation.comun.LocalAccionesCuenta
 import ar.edu.fguerrero.da1.agendasalud.presentation.comun.LocalSnackbar
 import ar.edu.fguerrero.da1.agendasalud.presentation.respaldo.RespaldoDialogos
 import ar.edu.fguerrero.da1.agendasalud.presentation.respaldo.RespaldoViewModel
+import ar.edu.fguerrero.da1.agendasalud.presentation.sincronizacion.AvisosSincronizacion
 import ar.edu.fguerrero.da1.agendasalud.presentation.sincronizacion.SincronizacionViewModel
 import ar.edu.fguerrero.da1.agendasalud.presentation.sincronizacion.textoSincronizacion
 
@@ -62,10 +63,12 @@ fun MarcoPantalla(
     val respaldo: RespaldoViewModel = hiltViewModel()
     val sincronizacion: SincronizacionViewModel = hiltViewModel()
     val estadoSync by sincronizacion.estado.collectAsStateWithLifecycle()
+    val sincronizando by sincronizacion.sincronizando.collectAsStateWithLifecycle()
     val textoSync = textoSincronizacion(estadoSync)
-    val acciones = remember(respaldo, sincronizacion, alCerrarSesion, textoSync) {
+    val acciones = remember(respaldo, sincronizacion, alCerrarSesion, textoSync, sincronizando) {
         AccionesCuenta(
             estadoSincronizacion = textoSync,
+            sincronizando = sincronizando,
             sincronizar = sincronizacion::sincronizarAhora,
             exportarRespaldo = respaldo::pedirExportar,
             restaurarRespaldo = respaldo::pedirRestaurar,
@@ -109,6 +112,7 @@ fun MarcoPantalla(
                     Box(Modifier.widthIn(max = ANCHO_MAXIMO_CONTENIDO)) { contenido() }
                 }
                 RespaldoDialogos(respaldo)
+                AvisosSincronizacion(sincronizacion)
             }
         }
     }

@@ -15,11 +15,14 @@ import androidx.work.WorkerParameters
 import ar.edu.fguerrero.da1.agendasalud.data.local.AgendaDatabase
 import ar.edu.fguerrero.da1.agendasalud.data.remoto.AlmacenCuenta
 import ar.edu.fguerrero.da1.agendasalud.data.remoto.ApiAgendaSalud
+import ar.edu.fguerrero.da1.agendasalud.di.AlcanceApp
 import ar.edu.fguerrero.da1.agendasalud.domain.model.EstadoSincronizacion
 import ar.edu.fguerrero.da1.agendasalud.domain.repository.SincronizacionRepository
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.drop
 import kotlinx.serialization.json.JsonObject
@@ -162,6 +165,7 @@ class SincronizacionRepositoryImpl @Inject constructor(
     private val programador: ProgramadorSincronizacion,
     private val almacen: AlmacenCuenta,
     private val db: AgendaDatabase,
+    @param:AlcanceApp private val alcanceApp: CoroutineScope,
 ) : SincronizacionRepository {
 
     override val estado: Flow<EstadoSincronizacion> = sincronizador.estado
@@ -190,7 +194,14 @@ class SincronizacionRepositoryImpl @Inject constructor(
         }
     }
 
-    override fun sincronizarAhora() = programador.sincronizarPronto()
+    override suspend fun sincronizarAhora(): EstadoSincronizacion {
+        // En el alcance de la app: si el usuario cambia de pantalla, la sincronización termina igual.
+        // El mutex del Sincronizador evita que se superponga con el trabajo periódico.
+        val resultado = alcanceApp.async { sincronizador.sincronizar() }.await()
+        // Sin conexión: queda encolada en WorkManager y se sincroniza sola cuando vuelva la red
+        if (resultado == EstadoSincronizacion.SinConexion) programador.sincronizarPronto()
+        return resultado
+    }
 
     private companion object {
         /** Compartido entre instancias del repositorio (se crea uno por ViewModel). */

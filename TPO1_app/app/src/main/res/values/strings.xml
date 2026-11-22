@@ -238,4 +238,10 @@
     <string name="sync_sin_cuenta">Sin sesión en el servidor: cerrá sesión e ingresá con tu contraseña</string>
     <string name="sync_error">No se pudo sincronizar. Se reintenta solo.</string>
     <string name="sync_nunca">Todavía no se sincronizó</string>
+    <string name="sync_en_curso">Sincronizando con el servidor</string>
+    <string name="sync_exito">Sincronización completa: tus datos están al día</string>
+    <string name="sync_fallo_sin_conexion">No se pudo sincronizar: no hay conexión a internet. Tus datos siguen guardados en el celular y se sincronizan cuando vuelva la conexión.</string>
+    <string name="sync_fallo_sin_cuenta">No se pudo sincronizar: venció la sesión con el servidor. Cerrá sesión e ingresá con tu contraseña. Tus datos siguen guardados en el celular.</string>
+    <string name="sync_fallo_error">No se pudo sincronizar por un problema del servidor. Tus datos siguen guardados en el celular.</string>
+    <string name="sync_reintentar">Reintentar</string>
 </resources>

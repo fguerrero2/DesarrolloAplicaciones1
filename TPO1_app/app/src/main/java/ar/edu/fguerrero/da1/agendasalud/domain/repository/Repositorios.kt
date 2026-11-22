@@ -123,5 +123,9 @@ interface SincronizacionRepository {
     /** Anota cuándo cambian los datos locales (para resolver conflictos). Suspende mientras observa. */
     suspend fun registrarCambiosLocales()
 
-    fun sincronizarAhora()
+    /**
+     * Sincroniza en el momento, a pedido del usuario, y devuelve cómo terminó (AlDia, SinConexion,
+     * SinCuenta o Error) para poder informárselo. Sigue aunque se cierre la pantalla.
+     */
+    suspend fun sincronizarAhora(): EstadoSincronizacion
 }
