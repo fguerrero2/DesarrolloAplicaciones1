@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.MoreVert
@@ -41,7 +42,10 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -59,6 +63,8 @@ import java.time.ZoneOffset
 data class AccionesCuenta(
     /** Estado de la sincronización con el servidor, ya como texto ("Sincronizado a las 10:42"). */
     val estadoSincronizacion: String,
+    /** Hay una sincronización en curso (pedida por el usuario o automática). */
+    val sincronizando: Boolean,
     val sincronizar: () -> Unit,
     val exportarRespaldo: () -> Unit,
     val restaurarRespaldo: () -> Unit,
@@ -80,8 +86,28 @@ fun Encabezado(titulo: String, modifier: Modifier = Modifier, subtitulo: String?
             Text(titulo, style = MaterialTheme.typography.headlineMedium, modifier = Modifier.semantics { heading() })
             subtitulo?.let { Text(it, style = MaterialTheme.typography.titleMedium) }
         }
-        if (acciones != null) MenuCuenta(acciones)
+        if (acciones != null) {
+            // Visibilidad del estado del sistema: se ve en todas las pantallas sin abrir el menú
+            if (acciones.sincronizando) IndicadorSincronizando(Modifier.align(Alignment.CenterVertically))
+            MenuCuenta(acciones)
+        }
     }
+}
+
+@Composable
+private fun IndicadorSincronizando(modifier: Modifier = Modifier) {
+    val descripcion = stringResource(R.string.sync_en_curso)
+    CircularProgressIndicator(
+        strokeWidth = 2.dp,
+        modifier = modifier
+            .padding(horizontal = 8.dp)
+            .size(20.dp)
+            // TalkBack lo anuncia al aparecer
+            .semantics {
+                contentDescription = descripcion
+                liveRegion = LiveRegionMode.Polite
+            },
+    )
 }
 
 @Composable
@@ -98,8 +124,17 @@ private fun MenuCuenta(acciones: AccionesCuenta) {
                 enabled = false,
                 onClick = {},
             )
+            // Deshabilitada mientras sincroniza: evita pedidos repetidos y muestra que está trabajando
             DropdownMenuItem(
-                text = { Text(stringResource(R.string.sync_ahora)) },
+                text = {
+                    Text(stringResource(if (acciones.sincronizando) R.string.sync_sincronizando else R.string.sync_ahora))
+                },
+                leadingIcon = if (acciones.sincronizando) {
+                    { CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(18.dp)) }
+                } else {
+                    null
+                },
+                enabled = !acciones.sincronizando,
                 onClick = {
                     abierto = false
                     acciones.sincronizar()
